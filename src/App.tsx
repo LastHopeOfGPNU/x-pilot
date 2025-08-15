@@ -134,13 +134,31 @@ const AppContent: React.FC = () => {
   // 检查onboarding状态
   useEffect(() => {
     const checkOnboardingStatus = async () => {
-      if (!user) {
+      const isOnboardingMockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
+      
+      console.log('App.tsx: Checking onboarding status:', {
+        user: !!user,
+        isOnboardingMockMode,
+        rawMockMode: localStorage.getItem('dev-onboarding-mode')
+      });
+      
+      // 如果启用了mock模式，强制显示onboarding
+      if (isOnboardingMockMode) {
+        console.log('App.tsx: Mock mode enabled, forcing onboarding display');
         setOnboardingStatus({ isFinished: false, currentStep: 'START', loading: false });
+        return;
+      }
+      
+      // 如果没有用户且不是mock模式，直接跳过onboarding检查
+      if (!user && !isOnboardingMockMode) {
+        console.log('App.tsx: No user and not mock mode, skipping onboarding');
+        setOnboardingStatus({ isFinished: true, currentStep: 'ENGAGEMENT', loading: false });
         return;
       }
 
       try {
         const status = await onboardingService.getCurrentStep();
+        console.log('App.tsx: Got onboarding status from service:', status);
         setOnboardingStatus({
           isFinished: status.is_finished,
           currentStep: status.current_step,
@@ -174,8 +192,11 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // 如果用户未登录，显示登录页面
-  if (!user) {
+  // 检查是否启用了开发模式的onboarding
+  const isOnboardingMockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
+  
+  // 如果用户未登录且未启用mock模式，显示登录页面
+  if (!user && !isOnboardingMockMode) {
     return <Login />;
   }
 
@@ -195,8 +216,8 @@ const AppContent: React.FC = () => {
   if (!onboardingStatus.isFinished) {
     return (
       <Onboarding 
-        currentStep={onboardingStatus.currentStep as 'START' | 'CONNECT' | 'PICK_ACCOUNTS' | 'ENGAGEMENT'}
         onComplete={handleOnboardingComplete}
+        initialStep={onboardingStatus.currentStep}
       />
     );
   }

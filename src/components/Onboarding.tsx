@@ -5,13 +5,15 @@ import { twitterService, TwitterConnection } from '../lib/twitterService';
 import { inspirationAccountService } from '../lib/inspirationAccountService';
 import { useAuth } from '../contexts/AuthContext';
 import { InspirationAccount } from '../types';
+import EnvSwitcher from './EnvSwitcher';
 
 interface OnboardingProps {
   onComplete: () => void;
+  initialStep?: string;
 }
 
-const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
-  const [currentStep, setCurrentStep] = useState<OnboardingStep>('START');
+const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'START' }) => {
+  const [currentStep, setCurrentStep] = useState<OnboardingStep>(initialStep as OnboardingStep);
   const [isFinished, setIsFinished] = useState(false);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -23,20 +25,41 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [accountsLoading, setAccountsLoading] = useState(false);
   const { user } = useAuth();
   
-  // Fetch inspiration accounts from API
+  // Fetch inspiration accounts from API or use mock data
   const fetchInspirationAccounts = async () => {
     try {
       setAccountsLoading(true);
-      const response = await inspirationAccountService.getInspirationAccounts({
-        type: 'outreach',
-        page_size: 20
-      });
       
-      const transformedAccounts = response.data.map(account => 
-        inspirationAccountService.transformToInspirationAccount(account)
-      );
+      // Check if we're in mock mode
+      const mockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
       
-      setInspirationAccounts(transformedAccounts);
+      if (mockMode) {
+        // Use mock data in development mode
+        console.log('Using mock inspiration accounts data');
+        const mockAccounts = [
+          { id: 1, username: 'elonmusk', display_name: 'Elon Musk', followers_count: 150000000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1683325380441128960/yRsRRjGO_400x400.jpg' },
+          { id: 2, username: 'naval', display_name: 'Naval', followers_count: 2000000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1296667294148382721/9Pr6XrPB_400x400.jpg' },
+          { id: 3, username: 'paulg', display_name: 'Paul Graham', followers_count: 1500000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1723071264038912000/yr1KSdaM_400x400.jpg' },
+          { id: 4, username: 'sama', display_name: 'Sam Altman', followers_count: 3000000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1696002545646563328/ytsX5Eme_400x400.jpg' },
+          { id: 5, username: 'dhh', display_name: 'DHH', followers_count: 800000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1397357516779687936/QKjqKzKJ_400x400.jpg' }
+        ];
+        
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setInspirationAccounts(mockAccounts);
+      } else {
+        // Real API call
+        const response = await inspirationAccountService.getInspirationAccounts({
+          type: 'outreach',
+          page_size: 20
+        });
+        
+        const transformedAccounts = response.data.map(account => 
+          inspirationAccountService.transformToInspirationAccount(account)
+        );
+        
+        setInspirationAccounts(transformedAccounts);
+      }
     } catch (error) {
       console.error('Failed to fetch inspiration accounts:', error);
       setError('Failed to load inspiration accounts');
@@ -45,18 +68,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     }
   };
 
-  // Get current onboarding status and Twitter connection
+  // Initialize component and check Twitter connection
   useEffect(() => {
-    const fetchOnboardingStatus = async () => {
+    const initializeComponent = async () => {
       try {
         setLoading(true);
-        const status = await onboardingService.getCurrentStep();
-        setCurrentStep(status.current_step);
-        setIsFinished(status.is_finished);
-        
-        if (status.is_finished) {
-          onComplete();
-        }
         
         // Check Twitter connection status
         if (user) {
@@ -75,16 +91,22 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         if (user) {
           await fetchInspirationAccounts();
         }
+        
+        // In mock mode or when no user, we can proceed without API calls
+        const mockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
+        if (mockMode || !user) {
+          console.log('Mock mode or no user - skipping API calls');
+        }
       } catch (error) {
-        console.error('Failed to fetch onboarding status:', error);
-        setError('Failed to get onboarding status');
+        console.error('Failed to initialize onboarding component:', error);
+        setError(`Failed to initialize: ${error.message}`);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchOnboardingStatus();
-  }, [user, onComplete]);
+    initializeComponent();
+  }, [user]);
 
   // Handle account selection toggle (both star and target)
   const handleAccountToggle = (accountId: number) => {
@@ -730,6 +752,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           )}
         </div>
       </div>
+      
+      {/* 环境切换器 */}
+      <EnvSwitcher />
     </div>
   );
 };

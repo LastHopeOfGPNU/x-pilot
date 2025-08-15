@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Globe, Server } from 'lucide-react';
+import { Settings, Globe, Server, Sparkles } from 'lucide-react';
 import { apiConfigService } from '../lib/apiConfigService';
 
 interface EnvSwitcherProps {
@@ -9,12 +9,17 @@ interface EnvSwitcherProps {
 const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
   const [isLocalEnv, setIsLocalEnv] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isOnboardingMode, setIsOnboardingMode] = useState(false);
 
   useEffect(() => {
     // 只在开发环境显示
     if (import.meta.env.PROD) return;
     
     setIsLocalEnv(apiConfigService.isUsingLocalApi());
+    
+    // 从localStorage读取onboarding模式状态
+    const savedOnboardingMode = localStorage.getItem('dev-onboarding-mode') === 'true';
+    setIsOnboardingMode(savedOnboardingMode);
     
     const handleApiChange = () => {
       setIsLocalEnv(apiConfigService.isUsingLocalApi());
@@ -35,6 +40,17 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
   const handleToggle = () => {
     const newIsLocal = apiConfigService.toggleApiEnvironment();
     setIsLocalEnv(newIsLocal);
+  };
+
+  const handleOnboardingToggle = () => {
+    const newOnboardingMode = !isOnboardingMode;
+    setIsOnboardingMode(newOnboardingMode);
+    localStorage.setItem('dev-onboarding-mode', newOnboardingMode.toString());
+    
+    // 如果开启onboarding模式，刷新页面以触发重新检查
+    if (newOnboardingMode) {
+      window.location.reload();
+    }
   };
 
   const environments = apiConfigService.getAvailableEnvironments();
@@ -79,6 +95,32 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
                 )}
               </div>
             ))}
+          </div>
+          
+          {/* Onboarding模式选项 */}
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="mb-2">
+              <div className="text-sm font-medium text-gray-700 mb-2">开发选项</div>
+              <div
+                className={`flex items-center justify-between p-3 rounded-md border cursor-pointer transition-all ${
+                  isOnboardingMode
+                    ? 'border-purple-500 bg-purple-50 text-purple-700'
+                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                }`}
+                onClick={handleOnboardingToggle}
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles size={16} />
+                  <div>
+                    <div className="font-medium text-sm">Onboarding模式</div>
+                    <div className="text-xs text-gray-500">使用Mock数据进入引导流程</div>
+                  </div>
+                </div>
+                {isOnboardingMode && (
+                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                )}
+              </div>
+            </div>
           </div>
           
           <div className="mt-3 pt-3 border-t border-gray-100">
