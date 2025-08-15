@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { CopilotKit } from '@copilotkit/react-core';
 import Sidebar from './components/Sidebar';
@@ -73,6 +73,11 @@ const AppContent: React.FC = () => {
   const [isAIChatExpanded, setIsAIChatExpanded] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [apiBaseUrl, setApiBaseUrl] = useState<string>(apiConfigService.getApiBaseUrl());
+
+  // 使用useCallback避免onComplete函数重复创建 - 必须在所有条件渲染之前
+  const handleOnboardingComplete = useCallback(() => {
+    setOnboardingStatus({ isFinished: true, currentStep: 'ENGAGEMENT', loading: false });
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -191,9 +196,7 @@ const AppContent: React.FC = () => {
     return (
       <Onboarding 
         currentStep={onboardingStatus.currentStep as 'START' | 'CONNECT' | 'PICK_ACCOUNTS' | 'ENGAGEMENT'}
-        onComplete={() => {
-          setOnboardingStatus({ isFinished: true, currentStep: 'ENGAGEMENT', loading: false });
-        }}
+        onComplete={handleOnboardingComplete}
       />
     );
   }
