@@ -120,6 +120,24 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
                   <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                 )}
               </div>
+              
+              <div className="mt-2 p-3 rounded-md border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium text-sm text-gray-700">跳过Onboarding</div>
+                    <div className="text-xs text-gray-500">直接进入主界面</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('onboarding-status', 'finished');
+                      window.location.reload();
+                    }}
+                    className="px-3 py-1.5 bg-orange-600 text-white text-xs font-medium rounded hover:bg-orange-700 transition-colors"
+                  >
+                    跳过
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
           

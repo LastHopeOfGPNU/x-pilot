@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Calendar, MapPin, Link, Star, Settings, Edit3, Check, X, Camera, Shield, Bell, CreditCard, Users, Activity, TrendingUp, MessageSquare, BarChart3, Clock, Gift, ExternalLink, AlertCircle, LogOut, Loader2 } from 'lucide-react';
+import { User, Mail, Calendar, MapPin, Link, Star, Settings, Edit3, Check, X, Camera, Shield, Bell, CreditCard, Users, Activity, TrendingUp, MessageSquare, BarChart3, Clock, Gift, AlertCircle, LogOut, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { twitterService, TwitterConnection } from '../lib/twitterService';
 
@@ -350,28 +350,8 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
                 <h4 className="font-medium text-red-900">Configuration Required</h4>
               </div>
               <p className="text-sm text-red-700 mb-3">
-                Twitter API credentials are not configured. Please set up your Twitter API keys before connecting.
+                Twitter API credentials are not configured. Please contact support for assistance with setup.
               </p>
-              <div className="flex space-x-3">
-                <a
-                  href="/twitter/config"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center space-x-2 text-sm text-red-600 hover:text-red-800 font-medium"
-                >
-                  <span>Check Configuration</span>
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-                <a
-                  href="/twitter/diagnostics"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  <span>Run Diagnostics</span>
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-              </div>
             </div>
             
             <button

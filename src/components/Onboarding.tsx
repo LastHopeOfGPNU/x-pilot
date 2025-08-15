@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, CheckCircle, Twitter, Users, Zap, Sparkles, Loader2, AlertCircle, ExternalLink, Star } from 'lucide-react';
+import { ArrowRight, CheckCircle, Twitter, Users, Zap, Sparkles, Loader2, AlertCircle, Star } from 'lucide-react';
 import { onboardingService, OnboardingStep } from '../lib/onboardingService';
 import { twitterService, TwitterConnection } from '../lib/twitterService';
 import { inspirationAccountService } from '../lib/inspirationAccountService';
@@ -33,22 +33,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
       // Check if we're in mock mode
       const mockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
       
-      if (mockMode) {
-        // Use mock data in development mode
-        console.log('Using mock inspiration accounts data');
-        const mockAccounts = [
-          { id: 1, username: 'elonmusk', display_name: 'Elon Musk', followers_count: 150000000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1683325380441128960/yRsRRjGO_400x400.jpg' },
-          { id: 2, username: 'naval', display_name: 'Naval', followers_count: 2000000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1296667294148382721/9Pr6XrPB_400x400.jpg' },
-          { id: 3, username: 'paulg', display_name: 'Paul Graham', followers_count: 1500000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1723071264038912000/yr1KSdaM_400x400.jpg' },
-          { id: 4, username: 'sama', display_name: 'Sam Altman', followers_count: 3000000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1696002545646563328/ytsX5Eme_400x400.jpg' },
-          { id: 5, username: 'dhh', display_name: 'DHH', followers_count: 800000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1397357516779687936/QKjqKzKJ_400x400.jpg' }
-        ];
-        
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setInspirationAccounts(mockAccounts);
-      } else {
-        // Real API call
+      try {
+        // Always make real API request to get actual content
         const response = await inspirationAccountService.getInspirationAccounts({
           type: 'outreach',
           page_size: 20
@@ -59,6 +45,26 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
         );
         
         setInspirationAccounts(transformedAccounts);
+      } catch (apiError) {
+        console.error('API request failed:', apiError);
+        
+        // In mock mode, fallback to mock data if API fails
+        if (mockMode) {
+          console.log('API failed, using mock inspiration accounts data in mock mode');
+          const mockAccounts = [
+            { id: 1, username: 'elonmusk', display_name: 'Elon Musk', followers_count: 150000000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1683325380441128960/yRsRRjGO_400x400.jpg' },
+            { id: 2, username: 'naval', display_name: 'Naval', followers_count: 2000000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1296667294148382721/9Pr6XrPB_400x400.jpg' },
+            { id: 3, username: 'paulg', display_name: 'Paul Graham', followers_count: 1500000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1723071264038912000/yr1KSdaM_400x400.jpg' },
+            { id: 4, username: 'sama', display_name: 'Sam Altman', followers_count: 3000000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1696002545646563328/ytsX5Eme_400x400.jpg' },
+            { id: 5, username: 'dhh', display_name: 'DHH', followers_count: 800000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1397357516779687936/QKjqKzKJ_400x400.jpg' }
+          ];
+          
+          // Simulate API delay
+          await new Promise(resolve => setTimeout(resolve, 500));
+          setInspirationAccounts(mockAccounts);
+        } else {
+          throw apiError;
+        }
       }
     } catch (error) {
       console.error('Failed to fetch inspiration accounts:', error);
@@ -68,35 +74,15 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
     }
   };
 
-  // Initialize component and check Twitter connection
+  // Initialize component - only basic setup, no API calls
   useEffect(() => {
     const initializeComponent = async () => {
       try {
         setLoading(true);
         
-        // Check Twitter connection status
-        if (user) {
-          setConnectLoading(true);
-          try {
-            const connection = await twitterService.getUserConnection();
-            setTwitterConnection(connection);
-          } catch (error) {
-            console.error('Error checking Twitter connection:', error);
-          } finally {
-            setConnectLoading(false);
-          }
-        }
+        // Basic initialization without API calls
+        console.log('Onboarding component initialized');
         
-        // Fetch inspiration accounts from API
-        if (user) {
-          await fetchInspirationAccounts();
-        }
-        
-        // In mock mode or when no user, we can proceed without API calls
-        const mockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
-        if (mockMode || !user) {
-          console.log('Mock mode or no user - skipping API calls');
-        }
       } catch (error) {
         console.error('Failed to initialize onboarding component:', error);
         setError(`Failed to initialize: ${error.message}`);
@@ -107,6 +93,49 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
 
     initializeComponent();
   }, [user]);
+
+  // Check Twitter connection when entering CONNECT step
+  useEffect(() => {
+    const checkTwitterConnection = async () => {
+      if (currentStep === 'CONNECT') {
+        const mockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
+        
+        if (!user && !mockMode) {
+          console.log('No user and not in mock mode - skipping Twitter connection check');
+          return;
+        }
+
+        setConnectLoading(true);
+        try {
+          // Always try real API request first
+          const connection = await twitterService.getUserConnection();
+          setTwitterConnection(connection);
+        } catch (error) {
+          console.error('Error checking Twitter connection:', error);
+          // In mock mode, simulate connection status
+          if (mockMode) {
+            console.log('Mock mode - simulating Twitter connection status');
+            setTwitterConnection(null); // Default to not connected for testing
+          }
+        } finally {
+          setConnectLoading(false);
+        }
+      }
+    };
+
+    checkTwitterConnection();
+  }, [currentStep, user]);
+
+  // Fetch inspiration accounts when entering PICK_ACCOUNTS step
+  useEffect(() => {
+    const loadInspirationAccounts = async () => {
+      if (currentStep === 'PICK_ACCOUNTS' && inspirationAccounts.length === 0) {
+        await fetchInspirationAccounts();
+      }
+    };
+
+    loadInspirationAccounts();
+  }, [currentStep]);
 
   // Handle account selection toggle (both star and target)
   const handleAccountToggle = (accountId: number) => {
@@ -149,25 +178,31 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
       
       // If we're on PICK_ACCOUNTS step, batch send star and target requests
        if (currentStep === 'PICK_ACCOUNTS') {
-         const selectedAccounts = inspirationAccounts.filter(acc => acc.starred);
+         const mockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
          
-         try {
-           // Send batch star requests
-           const starPromises = selectedAccounts.map(account => 
-             inspirationAccountService.toggleStarAccount(account.id.toString(), true)
-           );
+         if (!mockMode) {
+           const selectedAccounts = inspirationAccounts.filter(acc => acc.starred);
            
-           // Send batch target requests
-           const targetPromises = selectedAccounts.map(account => 
-             inspirationAccountService.setAccountAsTarget(account.id.toString(), true)
-           );
-           
-           // Execute both operations in parallel
-           await Promise.all([...starPromises, ...targetPromises]);
-         } catch (error) {
-           console.error('Failed to save inspiration accounts:', error);
-           setError('Failed to save inspiration accounts');
-           return;
+           try {
+             // Send batch star requests
+             const starPromises = selectedAccounts.map(account => 
+               inspirationAccountService.toggleStarAccount(account.id.toString(), true)
+             );
+             
+             // Send batch target requests
+             const targetPromises = selectedAccounts.map(account => 
+               inspirationAccountService.setAccountAsTarget(account.id.toString(), true)
+             );
+             
+             // Execute both operations in parallel
+             await Promise.all([...starPromises, ...targetPromises]);
+           } catch (error) {
+             console.error('Failed to save inspiration accounts:', error);
+             setError('Failed to save inspiration accounts');
+             return;
+           }
+         } else {
+           console.log('Mock mode - skipping account processing API calls but progressing step');
          }
        }
       
@@ -276,7 +311,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
           <p className="text-red-600 mb-4">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-gradient-to-br from-[#4792E6] to-[#4792E6]/80 text-white rounded-lg hover:from-[#4792E6]/90 hover:to-[#4792E6]/70 transition-all duration-300 shadow-md hover:shadow-lg border border-[#4792E6]/20"
           >
             Retry
           </button>
@@ -326,9 +361,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                     <div className="flex flex-col items-center min-w-0 flex-1">
                       <div className={`flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 transition-all duration-200 ${
                         step.id === currentStep
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-lg scale-110'
+                          ? 'bg-gradient-to-br from-[#4792E6] to-[#4792E6]/80 border-[#4792E6] text-white shadow-lg scale-110'
                           : step.completed
-                          ? 'bg-green-600 border-green-600 text-white shadow-md'
+                          ? 'bg-gradient-to-br from-[#4792E6]/90 to-[#4792E6]/70 border-[#4792E6]/80 text-white shadow-md'
                           : 'bg-white border-gray-300 text-gray-400 hover:border-gray-400'
                       }`}>
                         {step.completed ? (
@@ -341,7 +376,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                       </div>
                       <div className="mt-2 text-center">
                         <span className={`text-xs sm:text-sm font-medium block leading-tight ${
-                          step.id === currentStep ? 'text-blue-600' : step.completed ? 'text-green-600' : 'text-gray-500'
+                          step.id === currentStep ? 'text-[#4792E6]' : step.completed ? 'text-[#4792E6]' : 'text-gray-500'
                         }`}>
                           {step.name}
                         </span>
@@ -350,7 +385,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                     {index < steps.length - 1 && (
                       <div className="flex items-center justify-center flex-shrink-0">
                         <div className={`w-8 sm:w-12 md:w-16 lg:w-20 h-0.5 transition-colors duration-200 ${
-                          step.completed ? 'bg-green-600' : 'bg-gray-300'
+                          step.completed ? 'bg-gradient-to-r from-[#4792E6]/80 to-[#4792E6]/60' : 'bg-gray-300'
                         }`} />
                       </div>
                     )}
@@ -365,82 +400,85 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
         <div className="max-w-4xl mx-auto">
           {/* START Step */}
           {currentStep === 'START' && (
-            <div className="text-center">
-              <div className="mb-12">
-                <h1 className="text-5xl font-bold text-gray-900 mb-6">
-                  Introducing <span className="text-blue-600">X Pilot</span>
-                </h1>
-                <p className="text-xl text-gray-600 mb-2">
-                  X Pilot is an AI-powered growth assistant for X (formerly Twitter).
-                </p>
-                <p className="text-xl text-gray-600 mb-2">
-                  It helps <span className="text-blue-600 font-semibold">creators</span>, <span className="text-green-600 font-semibold">indie hackers</span>, and <span className="text-purple-600 font-semibold">operators</span> grow their accounts with
-                </p>
-                <p className="text-xl text-gray-600">
-                  automated engagement, content generation, and strategic planning
-                </p>
-                <p className="text-xl text-gray-600 font-medium text-blue-600">
-                  — all without burning out.
-                </p>
-              </div>
+            <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/30 p-8 md:p-12">
+              <div className="text-center">
+                <div className="mb-12">
+                  <h1 className="text-5xl font-bold text-gray-900 mb-6">
+                    Introducing <span className="text-blue-600">X Pilot</span>
+                  </h1>
+                  <p className="text-xl text-gray-600 mb-2">
+                    X Pilot is an AI-powered growth assistant for X (formerly Twitter).
+                  </p>
+                  <p className="text-xl text-gray-600 mb-2">
+                    It helps <span className="text-blue-600 font-semibold">creators</span>, <span className="text-green-600 font-semibold">indie hackers</span>, and <span className="text-purple-600 font-semibold">operators</span> grow their accounts with
+                  </p>
+                  <p className="text-xl text-gray-600">
+                    automated engagement, content generation, and strategic planning
+                  </p>
+                  <p className="text-xl text-gray-600 font-medium text-blue-600">
+                    — all without burning out.
+                  </p>
+                </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                  <div className="mb-6">
-                    <svg className="w-12 h-12 text-blue-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12 max-w-6xl mx-auto">
+                <div className="bg-gradient-to-br from-[#4792E6]/10 to-[#4792E6]/5 backdrop-blur-sm p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[#4792E6]/20">
+                  <div className="mb-4">
+                    <svg className="w-10 h-10 text-[#4792E6] mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                     </svg>
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-4">Auto Reply Suggestion</h3>
-                  <p className="text-gray-600 text-lg leading-relaxed">
+                  <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">Auto Reply Suggestion</h3>
+                  <p className="text-gray-700 text-base leading-snug text-center">
                     Talk to AI and instantly generate high-quality comments or replies.
                   </p>
                 </div>
 
-                <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                  <div className="mb-6">
-                    <svg className="w-12 h-12 text-blue-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gradient-to-br from-[#4792E6]/10 to-[#4792E6]/5 backdrop-blur-sm p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[#4792E6]/20">
+                  <div className="mb-4">
+                    <svg className="w-10 h-10 text-[#4792E6] mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-4">Inspiration from top accounts</h3>
-                  <p className="text-gray-600 text-lg leading-relaxed">
+                  <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">Inspiration from top accounts</h3>
+                  <p className="text-gray-700 text-base leading-snug text-center">
                     Pick reference accounts and get AI-curated content in your voice.
                   </p>
                 </div>
 
-                <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                  <div className="mb-6">
-                    <svg className="w-12 h-12 text-blue-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gradient-to-br from-[#4792E6]/10 to-[#4792E6]/5 backdrop-blur-sm p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[#4792E6]/20">
+                  <div className="mb-4">
+                    <svg className="w-10 h-10 text-[#4792E6] mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                     </svg>
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-4">Auto Operation strategy</h3>
-                  <p className="text-gray-600 text-lg leading-relaxed">
+                  <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">Auto Operation strategy</h3>
+                  <p className="text-gray-700 text-base leading-snug text-center">
                     AI-generated content plans, posting schedules, and engagement blueprints.
                   </p>
                 </div>
               </div>
 
-              <button
-                onClick={handleNextStep}
-                disabled={actionLoading}
-                className="inline-flex items-center px-10 py-4 bg-blue-600 text-white font-semibold text-xl rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
-              >
-                {actionLoading ? (
-                  <Loader2 className="w-6 h-6 animate-spin mr-3" />
-                ) : (
-                  <Sparkles className="w-6 h-6 mr-3" />
-                )}
-                Get Started
-              </button>
+                <button
+                  onClick={handleNextStep}
+                  disabled={actionLoading}
+                  className="inline-flex items-center px-10 py-4 bg-gradient-to-br from-[#4792E6] to-[#4792E6]/80 text-white font-semibold text-xl rounded-xl hover:from-[#4792E6]/90 hover:to-[#4792E6]/70 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl border border-[#4792E6]/20"
+                >
+                  {actionLoading ? (
+                    <Loader2 className="w-6 h-6 animate-spin mr-3" />
+                  ) : (
+                    <Sparkles className="w-6 h-6 mr-3" />
+                  )}
+                  Get Started
+                </button>
+              </div>
             </div>
           )}
 
           {/* CONNECT Step */}
           {currentStep === 'CONNECT' && (
-            <div className="text-center">
-              <div className="mb-8">
+            <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/30 p-8 md:p-12">
+              <div className="text-center">
+                <div className="mb-8">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center space-x-4">
                     <div className="p-3 bg-blue-100 rounded-full">
@@ -515,28 +553,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                         <h4 className="font-medium text-red-900">Configuration Required</h4>
                       </div>
                       <p className="text-sm text-red-700 mb-3">
-                        Twitter API credentials are not configured. Please set up your Twitter API keys before connecting.
+                        Twitter API credentials are not configured. Please contact support for assistance with setup.
                       </p>
-                      <div className="flex space-x-3">
-                        <a
-                          href="/twitter/config"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center space-x-2 text-sm text-red-600 hover:text-red-800 font-medium"
-                        >
-                          <span>Check Configuration</span>
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                        <a
-                          href="/twitter/diagnostics"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
-                        >
-                          <span>Run Diagnostics</span>
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      </div>
                     </div>
                     
                     <button
@@ -549,36 +567,38 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                 )}
               </div>
 
-              {/* Navigation Buttons */}
-              <div className="flex justify-between mt-8">
-                <button
-                  onClick={handlePreviousStep}
-                  className="inline-flex items-center px-6 py-3 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-colors"
-                >
-                  <ArrowRight className="w-5 h-5 mr-2 rotate-180" />
-                  Previous
-                </button>
-                {twitterConnection && (
+                {/* Navigation Buttons */}
+                <div className="flex justify-between mt-8">
                   <button
-                    onClick={handleNextStep}
-                    disabled={actionLoading}
-                    className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handlePreviousStep}
+                    className="inline-flex items-center px-6 py-3 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-colors"
                   >
-                    {actionLoading ? (
-                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    ) : (
-                      <ArrowRight className="w-5 h-5 mr-2" />
-                    )}
-                    Continue
+                    <ArrowRight className="w-5 h-5 mr-2 rotate-180" />
+                    Previous
                   </button>
-                )}
+                  {twitterConnection && (
+                    <button
+                      onClick={handleNextStep}
+                      disabled={actionLoading}
+                      className="inline-flex items-center px-6 py-3 bg-gradient-to-br from-[#4792E6] to-[#4792E6]/80 text-white font-medium rounded-lg hover:from-[#4792E6]/90 hover:to-[#4792E6]/70 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg border border-[#4792E6]/20"
+                    >
+                      {actionLoading ? (
+                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                      ) : (
+                        <ArrowRight className="w-5 h-5 mr-2" />
+                      )}
+                      Continue
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
           {/* PICK_ACCOUNTS Step */}
           {currentStep === 'PICK_ACCOUNTS' && (
-            <div className="space-y-6">
+            <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/30 p-8 md:p-12">
+              <div className="space-y-6">
               <div className="text-center">
                 <Users className="mx-auto h-16 w-16 text-blue-600 mb-4" />
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Pick Your Inspiration Accounts</h2>
@@ -670,10 +690,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                 <button
                   onClick={handleNextStep}
                   disabled={actionLoading || !canContinuePickAccounts()}
-                  className={`inline-flex items-center px-6 py-3 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  className={`inline-flex items-center px-6 py-3 font-medium rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg ${
                     canContinuePickAccounts() 
-                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                      : 'bg-gray-300 text-gray-500'
+                      ? 'bg-gradient-to-br from-[#4792E6] to-[#4792E6]/80 text-white hover:from-[#4792E6]/90 hover:to-[#4792E6]/70 border border-[#4792E6]/20' 
+                      : 'bg-gray-300 text-gray-500 border border-gray-200'
                   }`}
                 >
                   {actionLoading ? (
@@ -684,12 +704,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                   Continue Setup
                 </button>
               </div>
+              </div>
             </div>
           )}
 
           {/* ENGAGEMENT Step */}
           {currentStep === 'ENGAGEMENT' && (
-            <div className="text-center">
+            <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/30 p-8 md:p-12">
+              <div className="text-center space-y-8">
               <div className="mb-8">
                 <Zap className="mx-auto h-16 w-16 text-purple-600 mb-4" />
                 <h1 className="text-3xl font-bold text-gray-900 mb-4">
@@ -700,25 +722,25 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div className="p-6 bg-purple-50 rounded-lg text-left">
-                  <h3 className="font-semibold text-purple-900 mb-3">🤖 AI Assistant</h3>
-                  <p className="text-sm text-purple-700 mb-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 max-w-4xl mx-auto">
+                <div className="p-6 bg-gradient-to-br from-[#4792E6]/10 to-[#4792E6]/5 backdrop-blur-sm rounded-xl border border-[#4792E6]/20 text-left shadow-lg hover:shadow-xl transition-all duration-300">
+                  <h3 className="font-bold text-gray-900 mb-3 text-lg">🤖 AI Assistant</h3>
+                  <p className="text-gray-700 mb-3 text-sm leading-snug">
                     Chat with AI assistant to create personalized marketing strategies
                   </p>
-                  <ul className="text-sm text-purple-600 space-y-1">
+                  <ul className="text-gray-600 space-y-1 text-sm">
                     <li>• Content planning and scheduling</li>
                     <li>• Engagement strategy optimization</li>
                     <li>• Performance analysis and insights</li>
                   </ul>
                 </div>
                 
-                <div className="p-6 bg-blue-50 rounded-lg text-left">
-                  <h3 className="font-semibold text-blue-900 mb-3">⚡ Smart Engagement</h3>
-                  <p className="text-sm text-blue-700 mb-3">
+                <div className="p-6 bg-gradient-to-br from-[#4792E6]/10 to-[#4792E6]/5 backdrop-blur-sm rounded-xl border border-[#4792E6]/20 text-left shadow-lg hover:shadow-xl transition-all duration-300">
+                  <h3 className="font-bold text-gray-900 mb-3 text-lg">⚡ Smart Engagement</h3>
+                  <p className="text-gray-700 mb-3 text-sm leading-snug">
                     Automated engagement with your target audience
                   </p>
-                  <ul className="text-sm text-blue-600 space-y-1">
+                  <ul className="text-gray-600 space-y-1 text-sm">
                     <li>• Smart reply suggestions</li>
                     <li>• Automated follow-up sequences</li>
                     <li>• Community building tools</li>
@@ -738,7 +760,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                 <button
                   onClick={handleNextStep}
                   disabled={actionLoading}
-                  className="inline-flex items-center px-8 py-4 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+                  className="inline-flex items-center px-8 py-4 bg-gradient-to-br from-[#4792E6] to-[#4792E6]/80 text-white font-medium rounded-lg hover:from-[#4792E6]/90 hover:to-[#4792E6]/70 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-lg hover:shadow-xl border border-[#4792E6]/20"
                 >
                   {actionLoading ? (
                     <Loader2 className="w-6 h-6 animate-spin mr-3" />
@@ -747,6 +769,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                   )}
                   Enter App
                 </button>
+              </div>
               </div>
             </div>
           )}
