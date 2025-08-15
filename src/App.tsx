@@ -17,8 +17,10 @@ import TwitterDirectCallback from './components/TwitterDirectCallback';
 import { Card, InspirationAccount, Post } from './types/index';
 import AIAssistant from './components/AIAssistant';
 import EnvSwitcher from './components/EnvSwitcher';
+import Onboarding from './components/Onboarding';
 
 import { apiConfigService } from './lib/apiConfigService';
+import { onboardingService } from './lib/onboardingService';
 
 // 定义MarketingStrategy类型
 export interface MarketingStrategy {
@@ -50,6 +52,11 @@ export const useLayout = () => useContext(LayoutContext);
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [onboardingStatus, setOnboardingStatus] = useState<{
+    isFinished: boolean;
+    currentStep: string;
+    loading: boolean;
+  }>({ isFinished: false, currentStep: 'START', loading: true });
   // 初始化时从localStorage读取，避免useEffect执行两次
   const [activeMenuItem, setActiveMenuItem] = useState<string>(() => {
     const savedMenuItem = localStorage.getItem('activeMenuItem');
@@ -119,6 +126,31 @@ const AppContent: React.FC = () => {
     };
   }, []);
 
+  // 检查onboarding状态
+  useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      if (!user) {
+        setOnboardingStatus({ isFinished: false, currentStep: 'START', loading: false });
+        return;
+      }
+
+      try {
+        const status = await onboardingService.getCurrentStep();
+        setOnboardingStatus({
+          isFinished: status.is_finished,
+          currentStep: status.current_step,
+          loading: false
+        });
+      } catch (error) {
+        console.error('Failed to check onboarding status:', error);
+        // 如果API调用失败，假设需要onboarding
+        setOnboardingStatus({ isFinished: false, currentStep: 'START', loading: false });
+      }
+    };
+
+    checkOnboardingStatus();
+  }, [user]);
+
   // Calculate available space for intelligent layout
   const sidebarWidth = 256; // w-64 = 16rem = 256px
   const aiChatWidth = isAIChatExpanded ? Math.min(Math.max(windowWidth * 0.55, 600), 800) : 320; // Expanded: 55vw (min 600px, max 800px), Normal: 320px
@@ -140,6 +172,30 @@ const AppContent: React.FC = () => {
   // 如果用户未登录，显示登录页面
   if (!user) {
     return <Login />;
+  }
+
+  // 如果onboarding状态还在加载中
+  if (onboardingStatus.loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-blue-50">
+        <div className="text-center">
+          <div className="mx-auto mb-4 w-16 h-16 rounded-full border-4 border-blue-200 animate-spin border-t-[#4792E6]"></div>
+          <p className="text-gray-600">正在检查设置状态...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 如果用户需要完成onboarding
+  if (!onboardingStatus.isFinished) {
+    return (
+      <Onboarding 
+        currentStep={onboardingStatus.currentStep as 'START' | 'CONNECT' | 'PICK_ACCOUNTS' | 'ENGAGEMENT'}
+        onComplete={() => {
+          setOnboardingStatus({ isFinished: true, currentStep: 'ENGAGEMENT', loading: false });
+        }}
+      />
+    );
   }
 
   const handleMenuItemClick = (itemName: string) => {
