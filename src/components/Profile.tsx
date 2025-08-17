@@ -119,6 +119,17 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
         return;
       }
 
+      // 首先检查是否已有连接且token是否有效
+      const tokenCheck = await twitterService.checkAndRefreshToken();
+      
+      if (tokenCheck.isValid && tokenCheck.connection) {
+        // Token有效，更新连接状态
+        setTwitterConnection(tokenCheck.connection);
+        console.log('Twitter connection is valid and refreshed if needed');
+        return;
+      }
+
+      // 如果没有有效连接，启动新的OAuth流程
       const authUrl = await twitterService.getAuthUrl();
       window.location.href = authUrl;
     } catch (error) {
