@@ -235,6 +235,23 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     setIsFocused(true);
   };
 
+  // 处理容器失去焦点
+  const handleContainerBlur = (e: React.FocusEvent) => {
+    // 检查焦点是否移动到容器内的其他元素
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (containerRef.current && relatedTarget && containerRef.current.contains(relatedTarget)) {
+      // 焦点仍在容器内，保持焦点状态
+      return;
+    }
+    // 焦点移到容器外，失去焦点状态
+    setIsFocused(false);
+  };
+
+  // 处理输入框失去焦点（现在由容器级别处理，这里保持空函数以避免冲突）
+  const handleInputBlur = (e: React.FocusEvent) => {
+    // 焦点管理现在由容器级别的 handleContainerBlur 处理
+  };
+
   // Handle @ button click
   const handleAtButtonClick = () => {
     // 直接显示选择器，不在输入框中添加@符号
@@ -697,8 +714,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   return (
     <div 
       ref={containerRef}
+      tabIndex={0}
       onClick={handleContainerFocus}
-      className={`h-full flex flex-col bg-white border-l border-gray-200 transition-all duration-300 ease-in-out ${
+      onFocus={handleContainerFocus}
+      onBlur={handleContainerBlur}
+      className={`h-full flex flex-col bg-white border-l border-gray-200 transition-all duration-300 ease-in-out outline-none ${
         isMinimized ? 'w-12' :
         isExpanded ? 'w-[45vw] min-w-[600px] max-w-[900px]' : 
         isFocused ? 'w-[30vw] min-w-[400px] max-w-[600px]' : 'w-[25vw] min-w-[320px] max-w-[500px]'
@@ -799,8 +819,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         value={inputValue}
                         onChange={(e) => handleInputChange(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        onFocus={() => setIsFocused(true)}
-                        onBlur={() => setIsFocused(false)}
+                        onFocus={handleContainerFocus}
+                        onBlur={handleInputBlur}
                         rows={2}
                         style={{
                           whiteSpace: 'pre-wrap',
@@ -997,8 +1017,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         value={inputValue}
                         onChange={(e) => handleInputChange(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        onFocus={() => setIsFocused(true)}
-                        onBlur={() => setIsFocused(false)}
+                        onFocus={handleContainerFocus}
+                        onBlur={handleInputBlur}
                         rows={1}
                         style={{ 
                           height: '40px', 
