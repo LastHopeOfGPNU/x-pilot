@@ -263,26 +263,51 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
       
       // 如果没有有效连接，启动新的OAuth流程
       const authUrl = await twitterService.getAuthUrl();
-      window.open(authUrl, '_blank', 'width=600,height=600');
+      const popup = window.open(authUrl, '_blank', 'width=600,height=600');
       
-      // Poll for connection status
-      const pollConnection = setInterval(async () => {
-        try {
-          const connection = await twitterService.getUserConnection();
-          if (connection) {
-            setTwitterConnection(connection);
-            clearInterval(pollConnection);
-            setActionLoading(false);
-          }
-        } catch (error) {
-          // Continue polling
+      // 监听来自弹出窗口的消息
+      const handleMessage = (event: MessageEvent) => {
+        // 验证消息来源
+        if (event.origin !== window.location.origin) {
+          return;
         }
-      }, 2000);
+        
+        if (event.data.type === 'TWITTER_AUTH_SUCCESS') {
+          // 授权成功，更新连接状态
+          setTwitterConnection(event.data.data);
+          setActionLoading(false);
+          setError(null);
+          window.removeEventListener('message', handleMessage);
+          console.log('Twitter authorization successful via popup');
+        } else if (event.data.type === 'TWITTER_AUTH_ERROR') {
+          // 授权失败
+          setError(event.data.error || 'Twitter authorization failed');
+          setActionLoading(false);
+          window.removeEventListener('message', handleMessage);
+          console.error('Twitter authorization failed:', event.data.error);
+        }
+      };
       
-      // Stop polling after 5 minutes
+      window.addEventListener('message', handleMessage);
+      
+      // 检查弹出窗口是否被关闭（用户手动关闭）
+      const checkClosed = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkClosed);
+          setActionLoading(false);
+          window.removeEventListener('message', handleMessage);
+          // 不设置错误，因为用户可能是主动取消的
+        }
+      }, 1000);
+      
+      // 5分钟后停止监听（超时保护）
       setTimeout(() => {
-        clearInterval(pollConnection);
+        clearInterval(checkClosed);
         setActionLoading(false);
+        window.removeEventListener('message', handleMessage);
+        if (!popup?.closed) {
+          setError('Authorization timeout. Please try again.');
+        }
       }, 300000);
       
     } catch (error) {
