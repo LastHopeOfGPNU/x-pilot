@@ -346,7 +346,8 @@ const AppContent: React.FC = () => {
     <CopilotKit 
       runtimeUrl={`${apiBaseUrl}/copilotkit`}
       agent='chat_agent'
-      showDevConsole={true}
+      showDevConsole={import.meta.env.DEV}
+      publicLicenseKey={import.meta.env.VITE_COPILOTKIT_PUBLIC_LICENSE_KEY}
     >
       <LayoutContext.Provider value={{ isAIChatExpanded, setIsAIChatExpanded }}>
         <div className="flex overflow-hidden h-screen bg-gray-50">
