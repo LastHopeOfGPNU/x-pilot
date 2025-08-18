@@ -296,7 +296,53 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
       
       const result = await twitterService.disconnectTwitter();
       if (result.success) {
+        // 清除本地状态
         setTwitterConnection(null);
+        setTwitterStatus(null);
+        
+        // 重新检查连接状态以确保界面同步
+        const checkTwitterConnection = async () => {
+          if (currentStep === 'CONNECT') {
+            const mockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
+            
+            if (!user && !mockMode) {
+              console.log('No user and not in mock mode - skipping Twitter connection check');
+              return;
+            }
+
+            setConnectLoading(true);
+            try {
+              // Always try real API request first
+              const status = await twitterService.getConnectionStatus();
+              setTwitterStatus(status);
+              
+              // Also get connection details if connected
+              if (status.is_twitter_connected) {
+                const connection = await twitterService.getUserConnection();
+                setTwitterConnection(connection);
+              } else {
+                setTwitterConnection(null);
+              }
+            } catch (error) {
+              console.error('Error checking Twitter connection:', error);
+              // In mock mode, simulate connection status
+              if (mockMode) {
+                console.log('Mock mode - simulating Twitter connection status');
+                setTwitterConnection(null); // Default to not connected for testing
+                setTwitterStatus({
+                  is_twitter_connected: false,
+                  is_authorized: false,
+                  is_expired: false
+                });
+              }
+            } finally {
+              setConnectLoading(false);
+            }
+          }
+        };
+        
+        await checkTwitterConnection();
+        console.log('Twitter connection successfully disconnected');
       } else {
         setError(result.error || 'Failed to disconnect Twitter account');
       }

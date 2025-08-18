@@ -152,14 +152,24 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
 
   const handleDisconnectTwitter = async () => {
     try {
+      setConnectLoading(true);
       const result = await twitterService.disconnectTwitter();
       if (result.success) {
+        // 清除本地状态
         setTwitterConnection(null);
+        setTwitterStatus(null);
+        
+        // 重新检查连接状态以确保界面同步
+        await checkTwitterConnection();
+        
+        console.log('Twitter connection successfully disconnected');
       } else {
         console.error('Failed to disconnect Twitter:', result.error);
       }
     } catch (error) {
       console.error('Error disconnecting Twitter:', error);
+    } finally {
+      setConnectLoading(false);
     }
   };
 

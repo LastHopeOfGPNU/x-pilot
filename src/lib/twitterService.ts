@@ -355,11 +355,18 @@ class TwitterService {
   // 断开Twitter连接
   async disconnectTwitter(): Promise<{ success: boolean; error?: string }> {
     try {
-      // 获取当前认证用户和session
-      const { data: { user, session }, error: userError } = await supabase.auth.getUser();
+      // 获取当前认证用户
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       
-      if (userError || !user || !session) {
+      if (userError || !user) {
         return { success: false, error: '用户未登录' };
+      }
+
+      // 获取session来获取access_token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        return { success: false, error: '无法获取用户会话' };
       }
 
       // 调用edge function断开Twitter连接
