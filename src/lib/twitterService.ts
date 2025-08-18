@@ -171,7 +171,7 @@ class TwitterService {
       return { success: true, data: connection };
     } catch (error) {
 
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return { success: false, error: errorMessage };
     }
   }
@@ -328,7 +328,7 @@ class TwitterService {
       return { success: true };
     } catch (error) {
 
-      return { success: false, error: error instanceof Error ? error.message : '未知错误' };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
   

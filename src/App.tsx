@@ -176,21 +176,17 @@ const AppContent: React.FC = () => {
         });
       } catch (error) {
         console.error('Failed to check onboarding status:', error);
-        // 设置错误状态，显示重试选项
+        // 接口失败时直接显示主页面，不显示错误信息
         setOnboardingStatus({
-          isFinished: false,
-          currentStep: 'START',
+          isFinished: true,
+          currentStep: 'ENGAGEMENT',
           loading: false,
-          error: '无法连接到服务器，请检查网络连接后重试'
+          error: undefined
         });
        }
      }, [user]);
 
-  // 重试检查onboarding状态
-  const retryOnboardingCheck = useCallback(async () => {
-    setOnboardingStatus(prev => ({ ...prev, loading: true, error: undefined }));
-    await checkOnboardingStatus();
-  }, [checkOnboardingStatus]);
+  // 移除重试功能，因为接口失败时直接显示主页面
 
   useEffect(() => {
     checkOnboardingStatus();
@@ -208,7 +204,7 @@ const AppContent: React.FC = () => {
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-blue-50">
         <div className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 rounded-full border-4 border-blue-200 animate-spin border-t-[#4792E6]"></div>
-          <p className="text-gray-600">正在加载...</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
@@ -228,37 +224,13 @@ const AppContent: React.FC = () => {
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-blue-50">
         <div className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 rounded-full border-4 border-blue-200 animate-spin border-t-[#4792E6]"></div>
-          <p className="text-gray-600">正在检查设置状态...</p>
+          <p className="text-gray-600">Checking setup status...</p>
         </div>
       </div>
     );
   }
 
-  // 如果onboarding状态检查出错
-  if (onboardingStatus.error) {
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-blue-50">
-        <div className="p-6 mx-auto max-w-md text-center">
-          <div className="flex justify-center items-center mx-auto mb-4 w-16 h-16 bg-red-100 rounded-full">
-            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h3 className="mb-2 text-lg font-semibold text-gray-800">连接失败</h3>
-          <p className="mb-6 text-gray-600">{onboardingStatus.error}</p>
-          <button
-            onClick={retryOnboardingCheck}
-            className="inline-flex items-center px-4 py-2 text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            <svg className="mr-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            重试
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // 移除错误处理UI，接口失败时直接显示主页面
 
   // 如果用户需要完成onboarding
   if (!onboardingStatus.isFinished) {
@@ -372,7 +344,7 @@ const AppContent: React.FC = () => {
 
   return (
     <CopilotKit 
-      runtimeUrl={`${apiBaseUrl}/api/copilotkit`}
+      runtimeUrl={`${apiBaseUrl}/copilotkit`}
       agent='chat_agent'
       showDevConsole={true}
     >

@@ -20,15 +20,15 @@ export const TwitterAuthCallback: React.FC = () => {
         const errorDescription = searchParams.get('error_description');
         
         if (errorParam) {
-          console.error('Twitter OAuth 回调错误:', errorParam, errorDescription);
-          throw new Error(`Twitter 返回错误: ${errorDescription || errorParam}`);
+          console.error('Twitter OAuth callback error:', errorParam, errorDescription);
+          throw new Error(`Twitter returned error: ${errorDescription || errorParam}`);
         }
 
         // 获取当前 Supabase 会话
         const { data, error } = await supabase.auth.getSession();
 
         if (error) {
-          throw new Error(`会话获取失败: ${error.message}`);
+          throw new Error(`Session retrieval failed: ${error.message}`);
         }
 
         if (!data.session) {
@@ -51,11 +51,11 @@ export const TwitterAuthCallback: React.FC = () => {
         }, 2000);
 
       } catch (error) {
-        console.error('Twitter 授权回调处理失败:', error);
+        console.error('Twitter authorization callback processing failed:', error);
         setStatus('error');
-        setMessage(error instanceof Error ? error.message : '授权处理失败');
+        setMessage(error instanceof Error ? error.message : 'Authorization processing failed');
         
-        // 错误情况下也跳转回主页，但延长时间让用户看到错误信息
+        // Redirect to homepage even on error, but extend time to let user see error message
         setTimeout(() => {
           navigate('/', { replace: true });
         }, 5000);
@@ -99,12 +99,12 @@ export const TwitterAuthCallback: React.FC = () => {
           <>
             <XCircle className="mx-auto h-16 w-16 text-red-500 mb-6" />
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              连接失败
+              Connection Failed
             </h2>
             <p className="text-gray-600 mb-4">{message}</p>
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-red-800">
-                请检查您的网络连接和 Twitter 应用配置，然后重试。
+                Please check your network connection and Twitter app configuration, then try again.
               </p>
             </div>
             <button

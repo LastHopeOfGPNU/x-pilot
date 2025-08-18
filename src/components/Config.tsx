@@ -61,7 +61,7 @@ const Config: React.FC<ConfigProps> = ({ onItemClick, selectedItemId }) => {
       setConfigItems(transformedItems);
     } catch (error) {
       console.error('Failed to fetch config items:', error);
-      setError(error instanceof Error ? error.message : '获取配置列表失败');
+      setError(error instanceof Error ? error.message : 'Failed to get configuration list');
     } finally {
       setLoading(false);
     }
@@ -88,17 +88,17 @@ const Config: React.FC<ConfigProps> = ({ onItemClick, selectedItemId }) => {
       )
     );
 
-    // TODO: 这里可以添加API调用来更新服务器端的状态
+    // TODO: Add API call here to update server-side state
     // try {
     //   await configService.updateConfig(id, { is_enabled: enabled });
     // } catch (error) {
-    //   // 如果更新失败，回滚UI状态
+    //   // If update fails, rollback UI state
     //   setConfigItems(prev => 
     //     prev.map(item => 
     //       item.id === id ? { ...item, enabled: !enabled } : item
     //     )
     //   );
-    //   console.error('更新配置状态失败:', error);
+    //   console.error('Failed to update configuration state:', error);
     // }
   };
 
@@ -174,7 +174,7 @@ const Config: React.FC<ConfigProps> = ({ onItemClick, selectedItemId }) => {
           <div className="text-center py-8">
             <div className="text-red-500 mb-4">
               <Settings size={48} className="mx-auto mb-2" />
-              <p className="text-lg font-medium">加载失败</p>
+              <p className="text-lg font-medium">Loading Failed</p>
             </div>
             <p className="text-gray-600 mb-4">{error}</p>
             <button

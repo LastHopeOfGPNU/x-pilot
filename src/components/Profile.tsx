@@ -115,7 +115,7 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
     try {
       // 检查Twitter API配置
       if (!twitterService.isConfigured()) {
-        alert('Twitter API 配置不完整！\n\n请按以下步骤配置：\n1. 访问 Twitter Developer Portal (https://developer.twitter.com/)\n2. 创建应用并获取 Client ID 和 Client Secret\n3. 在项目根目录的 .env 文件中配置这些密钥\n4. 重启开发服务器');
+        alert('Twitter API configuration incomplete!\n\nPlease follow these steps to configure:\n1. Visit Twitter Developer Portal (https://developer.twitter.com/)\n2. Create an app and get Client ID and Client Secret\n3. Configure these keys in the .env file in the project root directory\n4. Restart the development server');
         return;
       }
 
@@ -134,8 +134,8 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
       window.location.href = authUrl;
     } catch (error) {
       console.error('Error connecting to Twitter:', error);
-      const errorMessage = error instanceof Error ? error.message : '连接Twitter时发生未知错误';
-      alert(`连接失败：${errorMessage}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred while connecting to Twitter';
+      alert(`Connection failed: ${errorMessage}`);
     }
   };
 

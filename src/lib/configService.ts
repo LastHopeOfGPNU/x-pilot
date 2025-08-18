@@ -40,7 +40,7 @@ export interface ConfigResponse {
   updated_at: string;
 }
 
-// 错误响应接口
+// Error response interface
 export interface ErrorResponse {
   detail: string;
 }
@@ -115,7 +115,7 @@ class ConfigService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `获取配置详情失败: ${response.status}`);
+      throw new Error(errorData.message || `Failed to get configuration details: ${response.status}`);
     }
 
     const data = await response.json();
