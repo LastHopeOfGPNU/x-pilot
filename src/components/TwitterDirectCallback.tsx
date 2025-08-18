@@ -101,10 +101,12 @@ export const TwitterDirectCallback: React.FC = () => {
         // 提供更友好的错误信息
         if (errorMessage.includes('用户未登录')) {
           setMessage('请先登录应用，然后再连接Twitter账户');
-        } else if (errorMessage.includes('OAuth state not found') || errorMessage.includes('OAuth会话已过期')) {
-          setMessage('授权会话已过期，请重新开始连接流程');
-        } else if (errorMessage.includes('Invalid state parameter')) {
-          setMessage('Authorization verification failed, please restart the connection process');
+        } else if (errorMessage.includes('Authorization session not found')) {
+          setMessage('授权会话未找到，请重新开始连接流程');
+        } else if (errorMessage.includes('Authorization verification failed')) {
+          setMessage('授权验证失败，请重新开始连接流程');
+        } else if (errorMessage.includes('Authorization verification code not found')) {
+          setMessage('授权验证码未找到，请重新开始连接流程');
         } else if (errorMessage.includes('请求超时')) {
           setMessage('Network request timeout, please check your network connection and try again');
         
