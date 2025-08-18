@@ -655,9 +655,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                     
                     <button
                       onClick={handleConnectTwitter}
-                      className="w-full bg-black text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors font-medium"
+                      disabled={actionLoading}
+                      className="w-full bg-black text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                     >
-                      Connect X
+                      {actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                      <span>{actionLoading ? 'Connecting...' : 'Connect X'}</span>
                     </button>
                   </div>
                 )}

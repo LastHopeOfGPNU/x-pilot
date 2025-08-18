@@ -123,6 +123,7 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
   };
 
   const handleConnectTwitter = async () => {
+    setConnectLoading(true);
     try {
       // 检查Twitter API配置
       if (!twitterService.isConfigured()) {
@@ -147,6 +148,8 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
       console.error('Error connecting to Twitter:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred while connecting to Twitter';
       alert(`Connection failed: ${errorMessage}`);
+    } finally {
+      setConnectLoading(false);
     }
   };
 
@@ -437,9 +440,11 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
             
             <button
               onClick={handleConnectTwitter}
-              className="w-full bg-black text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors font-medium"
+              disabled={connectLoading}
+              className="w-full bg-black text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
-              Connect X
+              {connectLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+              <span>{connectLoading ? 'Connecting...' : 'Connect X'}</span>
             </button>
           </div>
         )}
