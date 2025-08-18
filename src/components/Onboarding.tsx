@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, CheckCircle, Twitter, Users, Zap, Sparkles, Loader2, AlertCircle, Star } from 'lucide-react';
+import { ArrowRight, CheckCircle, Twitter, Users, Zap, Sparkles, Loader2, AlertCircle, Star, MessageCircle, Target, Settings } from 'lucide-react';
 import { onboardingService, OnboardingStep } from '../lib/onboardingService';
 import { twitterService, TwitterConnection } from '../lib/twitterService';
 import { inspirationAccountService } from '../lib/inspirationAccountService';
@@ -176,30 +176,27 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
       setActionLoading(true);
       setError(null);
       
-      // If we're on PICK_ACCOUNTS step, batch send star and target requests
+      // If we're on PICK_ACCOUNTS step, use batch APIs for star and target
        if (currentStep === 'PICK_ACCOUNTS') {
          const mockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
          
          if (!mockMode) {
-           const selectedAccounts = inspirationAccounts.filter(acc => acc.starred);
+           const selectedAccountIds = inspirationAccounts
+             .filter(acc => acc.starred)
+             .map(acc => acc.id);
            
-           try {
-             // Send batch star requests
-             const starPromises = selectedAccounts.map(account => 
-               inspirationAccountService.toggleStarAccount(account.id.toString(), true)
-             );
-             
-             // Send batch target requests
-             const targetPromises = selectedAccounts.map(account => 
-               inspirationAccountService.setAccountAsTarget(account.id.toString(), true)
-             );
-             
-             // Execute both operations in parallel
-             await Promise.all([...starPromises, ...targetPromises]);
-           } catch (error) {
-             console.error('Failed to save inspiration accounts:', error);
-             setError('Failed to save inspiration accounts');
-             return;
+           if (selectedAccountIds.length > 0) {
+             try {
+               // Use batch APIs - batch-target and batch-star
+               await Promise.all([
+                 inspirationAccountService.batchSetAccountsAsTarget(selectedAccountIds, 'add'),
+                 inspirationAccountService.batchToggleStarAccounts(selectedAccountIds, 'add')
+               ]);
+             } catch (error) {
+               console.error('Failed to save inspiration accounts:', error);
+               setError('Failed to save inspiration accounts');
+               return;
+             }
            }
          } else {
            console.log('Mock mode - skipping account processing API calls but progressing step');
@@ -236,6 +233,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
       setActionLoading(true);
       setError(null);
       
+      // 首先检查是否已有连接且token是否有效
+      const tokenCheck = await twitterService.checkAndRefreshToken();
+      
+      if (tokenCheck.isValid && tokenCheck.connection) {
+        // Token有效，更新连接状态
+        setTwitterConnection(tokenCheck.connection);
+        setActionLoading(false);
+        console.log('Twitter connection is valid and refreshed if needed');
+        return;
+      }
+      
+      // 如果没有有效连接，启动新的OAuth流程
       const authUrl = await twitterService.getAuthUrl();
       window.open(authUrl, '_blank', 'width=600,height=600');
       
@@ -715,36 +724,49 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
               <div className="mb-8">
                 <Zap className="mx-auto h-16 w-16 text-purple-600 mb-4" />
                 <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                  Start Your AI Marketing Journey
+                  Start Your Vibe X Operation
                 </h1>
                 <p className="text-lg text-gray-600 mb-6">
-                  Setup complete! Now let the AI assistant help you create marketing strategies and start executing
+                  Setup complete! Now let X-Pilot help you find suitable replies for Vibe Engagement!
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 max-w-4xl mx-auto">
-                <div className="p-6 bg-gradient-to-br from-[#4792E6]/10 to-[#4792E6]/5 backdrop-blur-sm rounded-xl border border-[#4792E6]/20 text-left shadow-lg hover:shadow-xl transition-all duration-300">
-                  <h3 className="font-bold text-gray-900 mb-3 text-lg">🤖 AI Assistant</h3>
-                  <p className="text-gray-700 mb-3 text-sm leading-snug">
-                    Chat with AI assistant to create personalized marketing strategies
-                  </p>
-                  <ul className="text-gray-600 space-y-1 text-sm">
-                    <li>• Content planning and scheduling</li>
-                    <li>• Engagement strategy optimization</li>
-                    <li>• Performance analysis and insights</li>
-                  </ul>
-                </div>
-                
-                <div className="p-6 bg-gradient-to-br from-[#4792E6]/10 to-[#4792E6]/5 backdrop-blur-sm rounded-xl border border-[#4792E6]/20 text-left shadow-lg hover:shadow-xl transition-all duration-300">
-                  <h3 className="font-bold text-gray-900 mb-3 text-lg">⚡ Smart Engagement</h3>
-                  <p className="text-gray-700 mb-3 text-sm leading-snug">
-                    Automated engagement with your target audience
-                  </p>
-                  <ul className="text-gray-600 space-y-1 text-sm">
-                    <li>• Smart reply suggestions</li>
-                    <li>• Automated follow-up sequences</li>
-                    <li>• Community building tools</li>
-                  </ul>
+              {/* Embedded Feature Card */}
+              <div className="max-w-2xl mx-auto mb-8">
+                <div className="p-8 bg-gradient-to-br from-[#4792E6]/10 to-[#4792E6]/5 backdrop-blur-sm rounded-xl border border-[#4792E6]/20 shadow-lg hover:shadow-xl transition-all duration-300">
+                  <div className="text-center mb-6">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-[#4792E6] to-[#4792E6]/80 rounded-full mb-4">
+                      <Sparkles className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">X-Pilot Core Features</h3>
+                    <p className="text-gray-600 text-sm">AI-powered engagement for creators, builders & growth operators</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                    <div className="p-4 bg-white/50 rounded-lg">
+                      <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full mx-auto mb-2">
+                        <MessageCircle className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <h4 className="font-semibold text-gray-900 text-sm mb-1">Auto Reply</h4>
+                      <p className="text-gray-600 text-xs">AI-generated quality replies</p>
+                    </div>
+                    
+                    <div className="p-4 bg-white/50 rounded-lg">
+                      <div className="flex items-center justify-center w-10 h-10 bg-purple-100 rounded-full mx-auto mb-2">
+                        <Target className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <h4 className="font-semibold text-gray-900 text-sm mb-1">Inspiration</h4>
+                      <p className="text-gray-600 text-xs">Learn from top accounts</p>
+                    </div>
+                    
+                    <div className="p-4 bg-white/50 rounded-lg">
+                      <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full mx-auto mb-2">
+                        <Settings className="w-5 h-5 text-green-600" />
+                      </div>
+                      <h4 className="font-semibold text-gray-900 text-sm mb-1">Customized Reply Style</h4>
+                      <p className="text-gray-600 text-xs">AI content & engagement plans</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 

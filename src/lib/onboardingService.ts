@@ -136,6 +136,7 @@ class OnboardingService {
       } else {
         // 已完成所有步骤
         mockOnboardingState.is_finished = true;
+        // 保持current_step为ENGAGEMENT，因为这是最后一步
       }
       
       console.log('Mock: Step completed, new state:', mockOnboardingState);
@@ -149,12 +150,11 @@ class OnboardingService {
       try {
         const headers = await this.getAuthHeaders();
         
-        const url = `${this.baseUrl}/api/onboarding/step/complete`;
+        const url = `${this.baseUrl}/api/onboarding/step/forward`;
         
         const response = await fetch(url, {
           method: 'POST',
           headers,
-          body: JSON.stringify({ current_step: currentStep })
         });
 
         if (!response.ok) {

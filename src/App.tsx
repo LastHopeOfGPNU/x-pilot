@@ -56,6 +56,7 @@ const AppContent: React.FC = () => {
     isFinished: boolean;
     currentStep: string;
     loading: boolean;
+    error?: string;
   }>({ isFinished: false, currentStep: 'START', loading: true });
   // 初始化时从localStorage读取，避免useEffect执行两次
   const [activeMenuItem, setActiveMenuItem] = useState<string>(() => {
@@ -76,7 +77,7 @@ const AppContent: React.FC = () => {
 
   // 使用useCallback避免onComplete函数重复创建 - 必须在所有条件渲染之前
   const handleOnboardingComplete = useCallback(() => {
-    setOnboardingStatus({ isFinished: true, currentStep: 'ENGAGEMENT', loading: false });
+    setOnboardingStatus({ isFinished: true, currentStep: 'ENGAGEMENT', loading: false, error: undefined });
   }, []);
 
   useEffect(() => {
@@ -132,8 +133,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   // 检查onboarding状态
-  useEffect(() => {
-    const checkOnboardingStatus = async () => {
+  const checkOnboardingStatus = useCallback(async () => {
       const isOnboardingMockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
       
       console.log('App.tsx: Checking onboarding status:', {
@@ -145,14 +145,14 @@ const AppContent: React.FC = () => {
       // 如果启用了mock模式，强制显示onboarding
       if (isOnboardingMockMode) {
         console.log('App.tsx: Mock mode enabled, forcing onboarding display');
-        setOnboardingStatus({ isFinished: false, currentStep: 'START', loading: false });
+        setOnboardingStatus({ isFinished: false, currentStep: 'START', loading: false, error: undefined });
         return;
       }
       
       // 如果没有用户且不是mock模式，直接跳过onboarding检查
       if (!user && !isOnboardingMockMode) {
         console.log('App.tsx: No user and not mock mode, skipping onboarding');
-        setOnboardingStatus({ isFinished: true, currentStep: 'ENGAGEMENT', loading: false });
+        setOnboardingStatus({ isFinished: true, currentStep: 'ENGAGEMENT', loading: false, error: undefined });
         return;
       }
 
@@ -162,17 +162,30 @@ const AppContent: React.FC = () => {
         setOnboardingStatus({
           isFinished: status.is_finished,
           currentStep: status.current_step,
-          loading: false
+          loading: false,
+          error: undefined
         });
       } catch (error) {
         console.error('Failed to check onboarding status:', error);
-        // 如果API调用失败，假设需要onboarding
-        setOnboardingStatus({ isFinished: false, currentStep: 'START', loading: false });
-      }
-    };
+        // 设置错误状态，显示重试选项
+        setOnboardingStatus({
+          isFinished: false,
+          currentStep: 'START',
+          loading: false,
+          error: '无法连接到服务器，请检查网络连接后重试'
+        });
+       }
+     }, [user]);
 
+  // 重试检查onboarding状态
+  const retryOnboardingCheck = useCallback(async () => {
+    setOnboardingStatus(prev => ({ ...prev, loading: true, error: undefined }));
+    await checkOnboardingStatus();
+  }, [checkOnboardingStatus]);
+
+  useEffect(() => {
     checkOnboardingStatus();
-  }, [user]);
+  }, [checkOnboardingStatus]);
 
   // Calculate available space for intelligent layout
   const sidebarWidth = 256; // w-64 = 16rem = 256px
@@ -207,6 +220,32 @@ const AppContent: React.FC = () => {
         <div className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 rounded-full border-4 border-blue-200 animate-spin border-t-[#4792E6]"></div>
           <p className="text-gray-600">正在检查设置状态...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 如果onboarding状态检查出错
+  if (onboardingStatus.error) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-blue-50">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">连接失败</h3>
+          <p className="text-gray-600 mb-6">{onboardingStatus.error}</p>
+          <button
+            onClick={retryOnboardingCheck}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            重试
+          </button>
         </div>
       </div>
     );
