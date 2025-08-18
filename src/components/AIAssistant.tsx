@@ -706,17 +706,17 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     >
       {isMinimized ? (
         /* Minimized State - Only expand button in top right */
-        <div className="flex justify-end items-start p-4">
+        <div className="flex justify-end items-start p-3">
           <button
             onClick={(e) => {
               e.stopPropagation();
               setIsMinimized(false);
             }}
-            className="p-2 rounded-lg transition-colors hover:bg-gray-100"
+            className="p-1.5 rounded-lg transition-colors hover:bg-gray-100 mr-1"
             aria-label="Expand AI Assistant"
             title="Expand AI Assistant"
           >
-            <ChevronLeft size={20} className="text-gray-600" />
+            <ChevronLeft size={18} className="text-gray-600" />
           </button>
         </div>
       ) : (
