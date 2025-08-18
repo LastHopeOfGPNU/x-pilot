@@ -78,6 +78,15 @@ const AppContent: React.FC = () => {
   // 使用useCallback避免onComplete函数重复创建 - 必须在所有条件渲染之前
   const handleOnboardingComplete = useCallback(() => {
     setOnboardingStatus({ isFinished: true, currentStep: 'ENGAGEMENT', loading: false, error: undefined });
+    // 导航到 Engagement Queue (Inspiration Accounts)
+    setActiveMenuItem('Inspiration Accounts');
+    // 清除其他选择状态
+    setSelectedCard(null);
+    setSelectedAccount(null);
+    setSelectedConfigItem(null);
+    setSelectedPostId(null);
+    setSelectedPost(null);
+    setSelectedStrategy(null);
   }, []);
 
   useEffect(() => {
