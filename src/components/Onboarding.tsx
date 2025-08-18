@@ -6,6 +6,7 @@ import { inspirationAccountService } from '../lib/inspirationAccountService';
 import { useAuth } from '../contexts/AuthContext';
 import { InspirationAccount } from '../types';
 import EnvSwitcher from './EnvSwitcher';
+import ConfirmationModal from './ConfirmationModal';
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -24,6 +25,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
   const [inspirationAccounts, setInspirationAccounts] = useState<InspirationAccount[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
+  const [showDisconnectModal, setShowDisconnectModal] = useState(false);
+  const [disconnectLoading, setDisconnectLoading] = useState(false);
   const { user } = useAuth();
   
   // Fetch inspiration accounts from API or use mock data
@@ -289,9 +292,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
     }
   };
 
-  const handleDisconnectTwitter = async () => {
+  const handleDisconnectTwitter = () => {
+    setShowDisconnectModal(true);
+  };
+
+  const confirmDisconnectTwitter = async () => {
     try {
-      setActionLoading(true);
+      setDisconnectLoading(true);
       setError(null);
       
       const result = await twitterService.disconnectTwitter();
@@ -343,6 +350,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
         
         await checkTwitterConnection();
         console.log('Twitter connection successfully disconnected');
+        setShowDisconnectModal(false);
       } else {
         setError(result.error || 'Failed to disconnect Twitter account');
       }
@@ -350,7 +358,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
       console.error('Failed to disconnect Twitter:', error);
       setError('Failed to disconnect Twitter account');
     } finally {
-      setActionLoading(false);
+      setDisconnectLoading(false);
     }
   };
 
@@ -889,6 +897,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
       
       {/* 环境切换器 */}
       <EnvSwitcher />
+
+      {/* Disconnect Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDisconnectModal}
+        onClose={() => setShowDisconnectModal(false)}
+        onConfirm={confirmDisconnectTwitter}
+        title="Disconnect X Account"
+        message="Are you sure you want to disconnect your X (Twitter) account? This will stop all automated activities and you'll need to reconnect to use XPilot features."
+        confirmText="Disconnect"
+        cancelText="Cancel"
+        isLoading={disconnectLoading}
+      />
     </div>
   );
 };

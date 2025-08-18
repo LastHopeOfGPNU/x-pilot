@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Mail, Calendar, MapPin, Link, Star, Settings, Edit3, Check, X, Camera, Shield, Bell, CreditCard, Users, Activity, TrendingUp, MessageSquare, BarChart3, Clock, Gift, AlertCircle, LogOut, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { twitterService, TwitterConnection, TwitterConnectionStatus } from '../lib/twitterService';
+import ConfirmationModal from './ConfirmationModal';
 
 interface ProfileProps {
   onClose?: () => void;
@@ -18,6 +19,8 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
   const [twitterStatus, setTwitterStatus] = useState<TwitterConnectionStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [connectLoading, setConnectLoading] = useState(false);
+  const [showDisconnectModal, setShowDisconnectModal] = useState(false);
+  const [disconnectLoading, setDisconnectLoading] = useState(false);
 
   const [profileData, setProfileData] = useState({
     name: '',
@@ -153,9 +156,13 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
     }
   };
 
-  const handleDisconnectTwitter = async () => {
+  const handleDisconnectTwitter = () => {
+    setShowDisconnectModal(true);
+  };
+
+  const confirmDisconnectTwitter = async () => {
     try {
-      setConnectLoading(true);
+      setDisconnectLoading(true);
       const result = await twitterService.disconnectTwitter();
       if (result.success) {
         // 清除本地状态
@@ -166,13 +173,14 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
         await checkTwitterConnection();
         
         console.log('Twitter connection successfully disconnected');
+        setShowDisconnectModal(false);
       } else {
         console.error('Failed to disconnect Twitter:', result.error);
       }
     } catch (error) {
       console.error('Error disconnecting Twitter:', error);
     } finally {
-      setConnectLoading(false);
+      setDisconnectLoading(false);
     }
   };
 
@@ -561,6 +569,18 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
       <div className="overflow-y-auto relative z-10 flex-1 p-6">
         {renderContent()}
       </div>
+
+      {/* Disconnect Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDisconnectModal}
+        onClose={() => setShowDisconnectModal(false)}
+        onConfirm={confirmDisconnectTwitter}
+        title="Disconnect X Account"
+        message="Are you sure you want to disconnect your X (Twitter) account? This will stop all automated activities and you'll need to reconnect to use XPilot features."
+        confirmText="Disconnect"
+        cancelText="Cancel"
+        isLoading={disconnectLoading}
+      />
     </div>
   );
 };
