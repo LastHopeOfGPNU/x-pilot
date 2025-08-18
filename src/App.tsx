@@ -238,19 +238,19 @@ const AppContent: React.FC = () => {
   if (onboardingStatus.error) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-blue-50">
-        <div className="text-center max-w-md mx-auto p-6">
-          <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+        <div className="p-6 mx-auto max-w-md text-center">
+          <div className="flex justify-center items-center mx-auto mb-4 w-16 h-16 bg-red-100 rounded-full">
             <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">连接失败</h3>
-          <p className="text-gray-600 mb-6">{onboardingStatus.error}</p>
+          <h3 className="mb-2 text-lg font-semibold text-gray-800">连接失败</h3>
+          <p className="mb-6 text-gray-600">{onboardingStatus.error}</p>
           <button
             onClick={retryOnboardingCheck}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="inline-flex items-center px-4 py-2 text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="mr-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             重试
@@ -372,7 +372,8 @@ const AppContent: React.FC = () => {
 
   return (
     <CopilotKit 
-      runtimeUrl={`${apiBaseUrl}/api/agent`}
+      runtimeUrl={`${apiBaseUrl}/api/copilotkit`}
+      agent='chat_agent'
       showDevConsole={true}
     >
       <LayoutContext.Provider value={{ isAIChatExpanded, setIsAIChatExpanded }}>
