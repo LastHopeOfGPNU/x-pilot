@@ -482,7 +482,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
         // Add retry status message to local messages
         const retryMessage: Message = {
           id: generateId(),
-          content: `网络重试中 (${currentRetryCount + 1}/5)...`,
+          content: `Network retry (${currentRetryCount + 1}/5)...`,
           role: 'assistant',
           timestamp: new Date().toISOString()
         };
@@ -509,7 +509,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMessage]);
-      setError('网络连接失败，请检查网络后重试');
+      setError('Network connection failed, please check your network and try again');
       
     } finally {
       if (currentRetryCount >= 4 || shouldStopRetry) {
@@ -564,18 +564,21 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       .map(msg => {
         // 处理CopilotKit TextMessage格式
         if (msg.isTextMessage && msg.isTextMessage()) {
+          // CopilotKit的MessageRole.User对应的字符串值
+          const isUser = msg.role === 'User' || msg.role === 'user' || msg.role === MessageRole.User;
           return {
             id: generateId(),
-            role: msg.role === 'User' ? 'user' : 'assistant',
+            role: isUser ? 'user' : 'assistant',
             content: msg.content || '',
             timestamp: new Date().toISOString()
           };
         }
         // 处理简单消息格式
         if (msg.role && msg.content !== undefined) {
+          const isUser = msg.role.toLowerCase() === 'user' || msg.role === MessageRole.User;
           return {
             id: generateId(),
-            role: msg.role.toLowerCase() === 'user' ? 'user' : 'assistant',
+            role: isUser ? 'user' : 'assistant',
             content: msg.content || '',
             timestamp: new Date().toISOString()
           };
@@ -900,7 +903,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                       <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
                         {/* 昵称 */}
                         <div className="mb-1 text-xs text-gray-500">
-                          {message.role === 'user' ? userDisplayName : 'X-Piloter'}
+                          {message.role === 'user' ? userDisplayName : 'X-Pilot'}
                         </div>
                         
                         {/* 消息气泡 */}
@@ -980,7 +983,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                            <span className="ml-2 text-sm text-gray-600">正在思考...</span>
+                            <span className="ml-2 text-sm text-gray-600">Thinking...</span>
                           </div>
                         </div>
                       </div>
