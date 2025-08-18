@@ -429,15 +429,84 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     }
   };
 
+  // 渲染状态消息（网络重试、错误和用户停止）
+  const renderStatusMessage = (content: string) => {
+    const isNetworkError = content.includes('Network connection failed') || content.includes('网络异常');
+    const isRetrying = content.includes('Network retry');
+    const isUserStopped = content.includes('Response stopped by user') || content.includes('用户中止响应');
+    
+    if (isNetworkError) {
+      return (
+        <div className="flex justify-center mb-4">
+          <div className="flex items-center p-3 space-x-2 max-w-md bg-red-50 rounded-lg border border-red-200">
+            <AlertCircle size={16} className="flex-shrink-0 text-red-500" />
+            <span className="text-sm font-medium text-red-700">{content}</span>
+          </div>
+        </div>
+      );
+    }
+    
+    if (isRetrying) {
+      return (
+        <div className="flex justify-center mb-4">
+          <div className="flex items-center p-3 space-x-2 max-w-md bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+            <span className="text-sm font-medium text-blue-700">{content}</span>
+          </div>
+        </div>
+      );
+    }
+    
+    if (isUserStopped) {
+      return (
+        <div className="flex justify-center mb-4">
+          <div className="flex items-center p-3 space-x-2 max-w-md bg-orange-50 rounded-lg border border-orange-200">
+            <Square size={16} className="flex-shrink-0 text-orange-500" />
+            <span className="text-sm font-medium text-orange-700">{content}</span>
+          </div>
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
   // 停止响应和重试
   const handleStopResponse = () => {
     if (isLoading || retryCount > 0) {
       setShouldStopRetry(true); // 设置停止重试标志
       setIsLoading(false);
       setRetryCount(0); // 重置重试计数
+      
+      // Add user stop message
+      const stopMessage: Message = {
+        id: generateId(),
+        content: 'Response stopped by user',
+        role: 'assistant',
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, stopMessage]);
     }
     if (copilotLoading) {
-      stopGeneration();
+      try {
+        stopGeneration();
+      } catch (error) {
+        // 忽略停止生成时的错误，这是正常的用户操作
+        console.log('Stop generation completed');
+      }
+      
+      // Add user stop message for CopilotKit responses
+      const stopMessage: Message = {
+        id: generateId(),
+        content: 'Response stopped by user',
+        role: 'assistant',
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, stopMessage]);
     }
   };
 
@@ -504,7 +573,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       // Max retries reached or stopped - show error
       const errorMessage: Message = {
         id: generateId(),
-        content: '网络异常，请重试！',
+        content: 'Network connection failed, please check your network and try again',
         role: 'assistant',
         timestamp: new Date().toISOString()
       };
@@ -908,13 +977,31 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         
                         {/* 消息气泡 */}
                         <div
-                          className={`p-3 rounded-lg ${
+                          className={`p-3 rounded-lg break-words whitespace-pre-wrap max-w-full overflow-wrap-anywhere ${
                             message.role === 'user'
                               ? 'bg-[#4792E6] text-white rounded-tr-sm'
                               : 'bg-white text-black border border-gray-200 rounded-tl-sm'
                           }`}
+                          style={{
+                            wordBreak: 'break-word',
+                            overflowWrap: 'break-word',
+                            hyphens: 'auto'
+                          }}
                         >
-                          <ReactMarkdown>{message.content}</ReactMarkdown>
+                          {/* Check if this is a status message */}
+                          {message.role === 'assistant' && (
+                            message.content.includes('Network retry') ||
+                            message.content.includes('Network connection failed') ||
+                            message.content.includes('网络异常') ||
+                            message.content.includes('Response stopped by user') ||
+                            message.content.includes('用户中止响应')
+                          ) ? (
+                            renderStatusMessage(message.content)
+                          ) : (
+                            <div className="break-words">
+                              <ReactMarkdown>{message.content}</ReactMarkdown>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
