@@ -21,6 +21,7 @@ import Onboarding from './components/Onboarding';
 
 import { apiConfigService } from './lib/apiConfigService';
 import { onboardingService } from './lib/onboardingService';
+import { devConfigService } from './lib/devConfigService';
 
 // 定义MarketingStrategy类型
 export interface MarketingStrategy {
@@ -74,6 +75,7 @@ const AppContent: React.FC = () => {
   const [isAIChatExpanded, setIsAIChatExpanded] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [apiBaseUrl, setApiBaseUrl] = useState<string>(apiConfigService.getApiBaseUrl());
+  const [showCopilotDevConsole, setShowCopilotDevConsole] = useState(devConfigService.getShowCopilotDevConsole());
 
   // 使用useCallback避免onComplete函数重复创建 - 必须在所有条件渲染之前
   const handleOnboardingComplete = useCallback(() => {
@@ -138,6 +140,19 @@ const AppContent: React.FC = () => {
     
     return () => {
       apiConfigService.removeListener(handleApiUrlChange);
+    };
+  }, []);
+
+  // 监听开发配置变更
+  useEffect(() => {
+    const handleDevConfigChange = (config: any) => {
+      setShowCopilotDevConsole(config.showCopilotDevConsole);
+    };
+    
+    devConfigService.addListener(handleDevConfigChange);
+    
+    return () => {
+      devConfigService.removeListener(handleDevConfigChange);
     };
   }, []);
 
@@ -346,8 +361,8 @@ const AppContent: React.FC = () => {
     <CopilotKit 
       runtimeUrl={`${apiBaseUrl}/copilotkit`}
       agent='chat_agent'
-      showDevConsole={import.meta.env.DEV}
-      publicLicenseKey={import.meta.env.VITE_COPILOTKIT_PUBLIC_LICENSE_KEY}
+      // showDevConsole={showCopilotDevConsole}
+      // publicLicenseKey={import.meta.env.VITE_COPILOTKIT_PUBLIC_LICENSE_KEY}
     >
       <LayoutContext.Provider value={{ isAIChatExpanded, setIsAIChatExpanded }}>
         <div className="flex overflow-hidden h-screen bg-gray-50">
