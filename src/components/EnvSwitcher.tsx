@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Settings, Globe, Server, RotateCcw, Terminal } from 'lucide-react';
 import { apiConfigService } from '../lib/apiConfigService';
 import { devConfigService } from '../lib/devConfigService';
@@ -13,6 +13,12 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [showCopilotDevConsole, setShowCopilotDevConsole] = useState(false);
+  const [position, setPosition] = useState({ x: window.innerWidth - 200, y: window.innerHeight - 100 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
+  const [hasDragged, setHasDragged] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // 只在开发环境显示
@@ -52,6 +58,78 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
     const newValue = devConfigService.toggleCopilotDevConsole();
     setShowCopilotDevConsole(newValue);
   };
+
+  // 拖拽相关函数
+  
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+    
+    setDragStartPos({ x: e.clientX, y: e.clientY });
+    setDragOffset({ x: offsetX, y: offsetY });
+    setHasDragged(false);
+    
+    // 不立即设置isDragging，等鼠标移动一定距离后再设置
+    e.preventDefault();
+  };
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    // 计算鼠标移动距离
+    const deltaX = Math.abs(e.clientX - dragStartPos.x);
+    const deltaY = Math.abs(e.clientY - dragStartPos.y);
+    const dragThreshold = 5; // 拖拽阈值，像素
+    
+    // 如果移动距离超过阈值，开始拖拽
+    if (!isDragging && (deltaX > dragThreshold || deltaY > dragThreshold)) {
+      setIsDragging(true);
+      setHasDragged(true);
+    }
+    
+    if (!isDragging) return;
+    
+    const newX = e.clientX - dragOffset.x;
+    const newY = e.clientY - dragOffset.y;
+    
+    // 限制在窗口边界内
+    const boundedX = Math.max(16, Math.min(newX, window.innerWidth - (containerRef.current?.offsetWidth || 0) - 16));
+    const boundedY = Math.max(16, Math.min(newY, window.innerHeight - (containerRef.current?.offsetHeight || 0) - 16));
+    
+    setPosition({ x: boundedX, y: boundedY });
+  }, [dragStartPos.x, dragStartPos.y, isDragging, dragOffset.x, dragOffset.y]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    // 重置拖拽状态将在下次mousedown时进行
+  }, []);
+  
+  const handleButtonClick = (e: React.MouseEvent) => {
+    // 如果发生了拖拽，阻止点击事件
+    if (hasDragged) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    // 否则正常处理点击
+    setIsExpanded(true);
+  };
+
+
+
+  // 添加全局鼠标事件监听
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
   // 获取认证头
   const getAuthHeaders = async (): Promise<Record<string, string>> => {
@@ -98,9 +176,24 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
   const environments = apiConfigService.getAvailableEnvironments();
 
   return (
-    <div className={`fixed bottom-4 right-4 z-50 ${className}`}>
+    <div 
+      ref={containerRef}
+      className={`absolute z-50 ${className}`}
+      style={{
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        userSelect: 'none'
+      }}
+    >
       {isExpanded ? (
-        <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 min-w-[280px]">
+        <div 
+          className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 min-w-[280px]"
+          style={{
+            position: 'absolute',
+            bottom: '60px', // 在按钮上方显示，60px是按钮高度加间距
+            left: '0'
+          }}
+        >
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
               <Settings size={16} />
@@ -222,13 +315,14 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
         </div>
       ) : (
         <button
-          onClick={() => setIsExpanded(true)}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg border transition-all hover:shadow-xl ${
+          onClick={handleButtonClick}
+          onMouseDown={handleMouseDown}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg border transition-all hover:shadow-xl cursor-grab active:cursor-grabbing ${
             isLocalEnv 
               ? 'bg-orange-500 text-white border-orange-600 hover:bg-orange-600' 
               : 'bg-green-500 text-white border-green-600 hover:bg-green-600'
           }`}
-          title={`当前环境: ${isLocalEnv ? '本地开发' : '生产环境'}`}
+          title={`当前环境: ${isLocalEnv ? '本地开发' : '生产环境'} - 可拖拽移动`}
         >
           {isLocalEnv ? <Server size={16} /> : <Globe size={16} />}
           <span className="text-sm font-medium">

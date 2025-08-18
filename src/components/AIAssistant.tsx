@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Send, Zap, ChevronLeft, ChevronRight, Square, Loader2, AlertCircle, Wifi, WifiOff, Maximize2, Minimize2, Plus, Copy, User, UserCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import PlanGenerationCard from './PlanGenerationCard';
@@ -6,7 +6,7 @@ import SimplePlanCard from './SimplePlanCard';
 import ExecutionStepsCard from './ExecutionStepsCard';
 import { supabase } from '../lib/supabase';
 import { apiConfigService } from '../lib/apiConfigService';
-import { useCopilotAction, useCopilotReadable, useCopilotChat } from '@copilotkit/react-core';
+import { useCopilotAction, useCopilotReadable, useCopilotChat, useCopilotContext } from '@copilotkit/react-core';
 import { TextMessage, MessageRole } from '@copilotkit/runtime-client-gql';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -71,8 +71,8 @@ const CAPABILITY_OPTIONS = [
 const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const { user } = useAuth();
   
-  // Get user display name
-  const getUserDisplayName = () => {
+  // Get user display name - memoized to prevent unnecessary re-renders
+  const userDisplayName = useMemo(() => {
     if (user?.user_metadata?.full_name) {
       return user.user_metadata.full_name;
     }
@@ -80,7 +80,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       return user.email.split('@')[0];
     }
     return 'You';
-  };
+  }, [user?.user_metadata?.full_name, user?.email]);
   
   const [inputValue, setInputValue] = useState('');
   const [isMinimized, setIsMinimized] = useState(false);
@@ -109,7 +109,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   }> | null>(null);
 
   // CopilotKit chat integration
-  const { appendMessage, isLoading: copilotLoading, visibleMessages, reset } = useCopilotChat();
+  const { appendMessage, isLoading: copilotLoading, visibleMessages, reset, stopGeneration } = useCopilotChat();
+  
+  // CopilotKit context for thread management
+  const { setThreadId: setCopilotThreadId } = useCopilotContext();
 
   // CopilotKit Integration
   useCopilotReadable({
@@ -239,8 +242,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     // 找到第一个未禁用的选项
     const firstEnabledIndex = CAPABILITY_OPTIONS.findIndex(option => !option.disabled);
     setSelectedCapabilityIndex(firstEnabledIndex !== -1 ? firstEnabledIndex : 0);
-    // 设置选择器位置在输入框下方
-    setSelectorPosition({ top: 50, left: 0 });
+    // 设置选择器位置在输入框上方
+    setSelectorPosition({ top: -280, left: 0 });
     
     // Focus the textarea
     setTimeout(() => {
@@ -416,6 +419,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       setIsLoading(false);
       setRetryCount(0); // 重置重试计数
     }
+    if (copilotLoading) {
+      stopGeneration();
+    }
   };
 
   // CopilotKit handles all network communication and error handling
@@ -498,6 +504,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
 
   // 新增聊天窗口功能
   const handleNewChat = () => {
+    // 生成新的threadId
+    const newThreadId = `thread-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // 使用CopilotKit的setThreadId来切换到新会话
+    setCopilotThreadId(newThreadId);
+    
     // Reset CopilotKit chat state
     reset();
     
@@ -519,8 +531,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     setPlanGenerationBuffer('');
     setSimplePlan(null);
     setExecutionSteps(null);
-    // 重新生成threadId，确保新对话有独立的会话ID
-    setThreadId(`thread-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+    // 更新本地threadId状态
+    setThreadId(newThreadId);
   };
 
   // 自动滚动到底部
@@ -528,7 +540,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // 转换CopilotKit消息格式
+  // 转换CopilotKit消息格式，保持用户和AI消息的对应关系
   const convertVisibleMessages = (visibleMessages: any[]) => {
     return visibleMessages
       .filter(msg => msg && (msg.isTextMessage?.() || (msg.role && msg.content !== undefined)))
@@ -553,11 +565,13 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
         }
         return null;
       })
-      .filter(Boolean);
+      .filter(Boolean)
+      .filter(msg => msg.content && msg.content.trim().length > 0); // 过滤掉空内容的消息
   };
 
-  // 合并本地消息和CopilotKit消息
-  const allMessages = [...messages, ...convertVisibleMessages(visibleMessages || [])];
+  // 使用CopilotKit消息作为主要消息源，本地消息仅用于临时显示
+  const copilotKitMessages = convertVisibleMessages(visibleMessages || []);
+  const allMessages = copilotKitMessages.length > 0 ? copilotKitMessages : messages;
 
   // 监听消息变化，自动滚动到底部
   useEffect(() => {
@@ -565,6 +579,22 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       scrollToBottom();
     }
   }, [allMessages]);
+
+  // 自动调整输入框高度 - 使用requestAnimationFrame避免抖动
+  useEffect(() => {
+    if (textareaRef.current) {
+      const textarea = textareaRef.current;
+      
+      // 使用requestAnimationFrame确保DOM更新完成后再调整高度
+      requestAnimationFrame(() => {
+        // 重置高度以获取正确的scrollHeight
+        textarea.style.height = 'auto';
+        // 设置新高度，限制在最小40px和最大128px之间
+        const newHeight = Math.min(Math.max(textarea.scrollHeight, 40), 128);
+        textarea.style.height = `${newHeight}px`;
+      });
+    }
+  }, [inputValue]);
 
   // 处理点击外部区域关闭选择器
   useEffect(() => {
@@ -574,6 +604,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       }
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsFocused(false);
+        // 点击外部时，如果面板是展开状态，则收缩回初始状态
+        if (isExpanded) {
+          setIsExpanded(false);
+        }
       }
     };
 
@@ -581,7 +615,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [isExpanded]);
 
   // 渲染选中的能力标签
   const renderSelectedCapability = () => {
@@ -664,19 +698,36 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     <div 
       ref={containerRef}
       onClick={handleContainerFocus}
-      className={`h-full flex flex-col bg-white transition-all duration-300 ease-in-out ${
-        isExpanded ? 'w-[55vw] min-w-[600px] max-w-[800px]' : isFocused ? 'w-[420px]' : 'w-[380px]'
+      className={`h-full flex flex-col bg-white border-l border-gray-200 transition-all duration-300 ease-in-out ${
+        isMinimized ? 'w-12' :
+        isExpanded ? 'w-[45vw] min-w-[600px] max-w-[900px]' : 
+        isFocused ? 'w-[30vw] min-w-[400px] max-w-[600px]' : 'w-[25vw] min-w-[320px] max-w-[500px]'
       }`}
     >
-      {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b border-gray-200">
-        <div className="flex items-center space-x-3">
-          <Zap size={20} className="text-[#4792E6]" />
-          <span className="font-semibold text-gray-800">AI Assistant</span>
+      {isMinimized ? (
+        /* Minimized State - Only expand button in top right */
+        <div className="flex justify-end items-start p-4">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsMinimized(false);
+            }}
+            className="p-2 rounded-lg transition-colors hover:bg-gray-100"
+            aria-label="Expand AI Assistant"
+            title="Expand AI Assistant"
+          >
+            <ChevronLeft size={20} className="text-gray-600" />
+          </button>
         </div>
-        <div className="flex items-center space-x-2">
-          {!isMinimized && (
-            <>
+      ) : (
+        <>
+          {/* Header */}
+          <div className="flex justify-between items-center p-4 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <Zap size={20} className="text-[#4792E6]" />
+              <span className="font-semibold text-gray-800">AI Assistant</span>
+            </div>
+            <div className="flex items-center space-x-2">
               <button
                 onClick={handleNewChat}
                 className="p-2 rounded-lg transition-colors hover:bg-gray-100"
@@ -692,20 +743,20 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
               >
                 {isExpanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
               </button>
-            </>
-          )}
-          <button
-            onClick={() => setIsMinimized(!isMinimized)}
-            className="p-2 rounded-lg transition-colors hover:bg-gray-100"
-            aria-label={isMinimized ? "Expand operation panel" : "Collapse operation panel"}
-          >
-            {isMinimized ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
-          </button>
-        </div>
-      </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsMinimized(true);
+                }}
+                className="p-2 rounded-lg transition-colors hover:bg-gray-100"
+                aria-label="Hide AI Assistant"
+                title="Hide AI Assistant"
+              >
+                <ChevronRight size={20} className="text-gray-600" />
+              </button>
+            </div>
+          </div>
       
-      {!isMinimized && (
-        <>
           {allMessages.length === 0 ? (
             /* Empty State - Centered Input */
             <div className="flex flex-col flex-1 justify-center items-center p-8">
@@ -728,7 +779,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                   <div className="p-6">
                     {/* Error Display */}
                     {error && (
-                      <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
+                      <div className="flex items-center p-3 mb-4 space-x-2 bg-red-50 rounded-lg border border-red-200">
                         <AlertCircle size={16} className="text-red-500" />
                         <span className="text-sm text-red-700">{error}</span>
                       </div>
@@ -751,6 +802,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         onFocus={() => setIsFocused(true)}
                         onBlur={() => setIsFocused(false)}
                         rows={2}
+                        style={{
+                          whiteSpace: 'pre-wrap',
+                          wordWrap: 'break-word'
+                        }}
                       />
                       {/* Capability Selector */}
                       {renderCapabilitySelector()}
@@ -758,7 +813,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                     
                     {/* Action Bar - Capability selector and Send button in same row */}
                     <div className="pt-3 mt-3 border-t border-gray-100">
-                      <div className="flex items-center justify-between space-x-3">
+                      <div className="flex justify-between items-center space-x-3">
                         {/* Capability Selection Button */}
                         <button
                           onClick={handleAtButtonClick}
@@ -766,13 +821,13 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                           title="Select Capability"
                         >
                           <span className="text-sm font-medium">@</span>
-                          <span className="text-sm">Select Capability</span>
+                          <span className="text-sm">Tools</span>
                         </button>
                         
                         {/* Send Button */}
                         <button
                           onClick={() => {
-                            if (isLoading || retryCount > 0) {
+                            if (isLoading || retryCount > 0 || copilotLoading) {
                               handleStopResponse();
                             } else {
                               handleSubmit(inputValue);
@@ -780,17 +835,15 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                           }}
                           disabled={!inputValue.trim() && !(isLoading || retryCount > 0) && !copilotLoading}
                           className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-[#4792E6] hover:bg-[#3a7bc8] disabled:bg-gray-300 disabled:cursor-not-allowed text-white transition-all duration-200 shadow-sm hover:shadow-md disabled:shadow-none min-w-[80px] justify-center"
-                          title={isLoading || retryCount > 0 ? "Stop" : "Send"}
+                          title={isLoading || retryCount > 0 || copilotLoading ? "Stop" : "Send"}
                         >
-                          {isLoading || retryCount > 0 ? (
+                          {isLoading || retryCount > 0 || copilotLoading ? (
                             <Square size={16} />
-                          ) : copilotLoading ? (
-                            <Loader2 size={16} className="animate-spin" />
                           ) : (
                             <Send size={16} />
                           )}
                           <span className="text-sm font-medium">
-                            {isLoading || retryCount > 0 ? "Stop" : "Send"}
+                            {isLoading || retryCount > 0 || copilotLoading ? "Stop" : "Send"}
                           </span>
                         </button>
                       </div>
@@ -809,16 +862,16 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                     key={message.id}
                     className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4 group`}
                   >
-                    <div className={`flex ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : 'flex-row'} items-start space-x-3 max-w-[80%]`}>
+                    <div className={`flex ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} items-start ${message.role === 'user' ? 'space-x-reverse space-x-3' : 'space-x-3'} max-w-[80%]`}>
                       {/* 头像 */}
                       <div className="flex-shrink-0">
                         {message.role === 'user' ? (
                           <div className="w-8 h-8 rounded-full bg-[#4792E6] flex items-center justify-center">
-                            <UserCircle size={16} className="text-white" />
+                            <User size={16} className="text-white" />
                           </div>
                         ) : (
-                          <div className="flex justify-center items-center w-8 h-8 bg-gradient-to-br from-[#4792E6] to-[#3a7bc8] rounded-full">
-                            <span className="text-xs font-bold text-white tracking-tight">XP</span>
+                          <div className="flex overflow-hidden justify-center items-center w-8 h-8 bg-white rounded-full border border-gray-200">
+                            <img src="/xpilot-logo-fill-white.jpg" alt="X-Pilot" className="object-contain w-6 h-6" />
                           </div>
                         )}
                       </div>
@@ -827,7 +880,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                       <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
                         {/* 昵称 */}
                         <div className="mb-1 text-xs text-gray-500">
-                          {message.role === 'user' ? getUserDisplayName() : 'X-Piloter'}
+                          {message.role === 'user' ? userDisplayName : 'X-Piloter'}
                         </div>
                         
                         {/* 消息气泡 */}
@@ -889,8 +942,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                     <div className="flex items-start space-x-3 max-w-[80%]">
                       {/* AI头像 */}
                        <div className="flex-shrink-0">
-                         <div className="flex justify-center items-center w-8 h-8 bg-gradient-to-br from-[#4792E6] to-[#3a7bc8] rounded-full">
-                           <Zap size={14} className="text-white" />
+                         <div className="flex overflow-hidden justify-center items-center w-8 h-8 bg-white rounded-full border border-gray-200">
+                           <img src="/xpilot-logo-fill-white.jpg" alt="X-Pilot" className="object-contain w-6 h-6" />
                          </div>
                        </div>
                       
@@ -907,7 +960,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                            <span className="text-sm text-gray-600 ml-2">正在思考...</span>
+                            <span className="ml-2 text-sm text-gray-600">正在思考...</span>
                           </div>
                         </div>
                       </div>
@@ -919,11 +972,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
               </div>
 
               {/* Bottom Input */}
-              <div className="border-t border-gray-200 p-4">
+              <div className="p-4 border-t border-gray-200">
                 {/* Error Display */}
                 {error && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
-                    <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
+                  <div className="flex items-center p-3 mb-4 space-x-2 bg-red-50 rounded-lg border border-red-200">
+                    <AlertCircle size={16} className="flex-shrink-0 text-red-500" />
                     <span className="text-sm text-red-700">{error}</span>
                   </div>
                 )}
@@ -934,11 +987,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                 {renderSelectedCapability()}
                 
                 <div className="relative">
-                  <div className="flex items-end space-x-2">
-                    <div className="flex-1 relative">
+                  {/* Text Input Area - Top */}
+                  <div className="mb-3">
+                    <div className="relative">
                       <textarea
                         ref={textareaRef}
-                        className="w-full resize-none border border-gray-300 rounded-lg px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-[#4792E6] text-sm min-h-[40px] max-h-32"
+                        className="w-full resize-none border border-gray-300 rounded-lg px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-[#4792E6] text-sm overflow-hidden"
                         placeholder="Type your message..."
                         value={inputValue}
                         onChange={(e) => handleInputChange(e.target.value)}
@@ -946,52 +1000,58 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         onFocus={() => setIsFocused(true)}
                         onBlur={() => setIsFocused(false)}
                         rows={1}
-                        style={{ height: 'auto' }}
+                        style={{ 
+                          height: '40px', 
+                          minHeight: '40px', 
+                          maxHeight: '128px',
+                          whiteSpace: 'pre-wrap',
+                          wordWrap: 'break-word'
+                        }}
                       />
                       
-                      {/* Capability Selector */}
+                      {/* Capability Selector Popup */}
                       {renderCapabilitySelector()}
                     </div>
+                  </div>
+                  
+                  {/* Action Bar - Capability selector and Send button in same row - Bottom */}
+                  <div className="flex justify-between items-center space-x-3">
+                    {/* Capability Selection Button */}
+                    <button
+                      onClick={handleAtButtonClick}
+                      className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:text-[#4792E6] hover:bg-blue-50 rounded-lg transition-colors duration-200 border border-gray-200 hover:border-[#4792E6]"
+                      title="Select Capability"
+                    >
+                      <span className="text-sm font-medium">@</span>
+                      <span className="text-sm">Select Capability</span>
+                    </button>
                     
-                    {/* Action Bar - Capability selector and Send button in same row */}
-                    <div className="pt-3 mt-3 border-t border-gray-100">
-                      <div className="flex items-center justify-between space-x-3">
-                        {/* Capability Selection Button */}
-                        <button
-                          onClick={handleAtButtonClick}
-                          className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:text-[#4792E6] hover:bg-blue-50 rounded-lg transition-colors duration-200 border border-gray-200 hover:border-[#4792E6]"
-                          title="Select Capability"
-                        >
-                          <span className="text-sm font-medium">@</span>
-                          <span className="text-sm">Select Capability</span>
-                        </button>
-                        
-                        {/* Send Button */}
-                        <button
-                          onClick={() => {
-                            if (isLoading || retryCount > 0) {
-                              handleStopResponse();
-                            } else {
-                              handleSubmit(inputValue);
-                            }
-                          }}
-                          disabled={!inputValue.trim() && !(isLoading || retryCount > 0) && !copilotLoading}
-                          className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-[#4792E6] hover:bg-[#3a7bc8] disabled:bg-gray-300 disabled:cursor-not-allowed text-white transition-all duration-200 shadow-sm hover:shadow-md disabled:shadow-none min-w-[80px] justify-center"
-                          title={isLoading || retryCount > 0 ? "Stop" : "Send"}
-                        >
-                          {isLoading || retryCount > 0 ? (
-                            <Square size={16} />
-                          ) : copilotLoading ? (
-                            <Loader2 size={16} className="animate-spin" />
-                          ) : (
-                            <Send size={16} />
-                          )}
-                          <span className="text-sm font-medium">
-                            {isLoading || retryCount > 0 ? "Stop" : "Send"}
-                          </span>
-                        </button>
-                      </div>
-                    </div>
+                    {/* Send Button */}
+                    <button
+                      onClick={() => {
+                        if (copilotLoading) {
+                          handleStopResponse();
+                        } else {
+                          handleSubmit(inputValue);
+                        }
+                      }}
+                      disabled={!inputValue.trim() && !copilotLoading}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed text-white transition-all duration-200 shadow-sm hover:shadow-md disabled:shadow-none min-w-[80px] justify-center ${
+                        copilotLoading 
+                          ? 'bg-red-500 hover:bg-red-600' 
+                          : 'bg-[#4792E6] hover:bg-[#3a7bc8]'
+                      }`}
+                      title={copilotLoading ? "Stop" : "Send"}
+                    >
+                      {copilotLoading ? (
+                        <Square size={16} />
+                      ) : (
+                        <Send size={16} />
+                      )}
+                      <span className="text-sm font-medium">
+                        {copilotLoading ? "Stop" : "Send"}
+                      </span>
+                    </button>
                   </div>
                 </div>
               </div>

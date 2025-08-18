@@ -209,7 +209,7 @@ const AppContent: React.FC = () => {
 
   // Calculate available space for intelligent layout
   const sidebarWidth = 256; // w-64 = 16rem = 256px
-  const aiChatWidth = isAIChatExpanded ? Math.min(Math.max(windowWidth * 0.55, 600), 800) : 320; // Expanded: 55vw (min 600px, max 800px), Normal: 320px
+  const aiChatWidth = isAIChatExpanded ? Math.min(Math.max(windowWidth * 0.45, 600), 900) : Math.min(Math.max(windowWidth * 0.25, 320), 500); // Expanded: 45vw (min 600px, max 900px), Normal: 25vw (min 320px, max 500px)
   const remainingWidth = windowWidth - sidebarWidth - aiChatWidth;
   const canShowBothPanels = remainingWidth >= 800; // Need at least 800px for both panels
 
@@ -361,8 +361,8 @@ const AppContent: React.FC = () => {
     <CopilotKit 
       runtimeUrl={`${apiBaseUrl}/copilotkit`}
       agent='chat_agent'
-      // showDevConsole={showCopilotDevConsole}
-      // publicLicenseKey={import.meta.env.VITE_COPILOTKIT_PUBLIC_LICENSE_KEY}
+      showDevConsole={showCopilotDevConsole}
+      publicLicenseKey={import.meta.env.VITE_COPILOTKIT_PUBLIC_LICENSE_KEY}
     >
       <LayoutContext.Provider value={{ isAIChatExpanded, setIsAIChatExpanded }}>
         <div className="flex overflow-hidden h-screen bg-gray-50">
