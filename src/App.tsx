@@ -244,7 +244,8 @@ const AppContent: React.FC = () => {
 
   return (
     <CopilotKit 
-      runtimeUrl={`${apiBaseUrl}/api/agent`}
+      runtimeUrl='https://pilotapi.producthot.top/copilotkit'
+      agent='chat_agent'
       showDevConsole={true}
     >
       <LayoutContext.Provider value={{ isAIChatExpanded, setIsAIChatExpanded }}>
