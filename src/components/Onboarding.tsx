@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, CheckCircle, Twitter, Users, Zap, Sparkles, Loader2, AlertCircle, Star, MessageCircle, Target, Settings } from 'lucide-react';
 import { onboardingService, OnboardingStep } from '../lib/onboardingService';
-import { twitterService, TwitterConnection } from '../lib/twitterService';
+import { twitterService, TwitterConnection, TwitterConnectionStatus } from '../lib/twitterService';
 import { inspirationAccountService } from '../lib/inspirationAccountService';
 import { useAuth } from '../contexts/AuthContext';
 import { InspirationAccount } from '../types';
@@ -19,6 +19,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [twitterConnection, setTwitterConnection] = useState<TwitterConnection | null>(null);
+  const [twitterStatus, setTwitterStatus] = useState<TwitterConnectionStatus | null>(null);
   const [connectLoading, setConnectLoading] = useState(false);
   const [inspirationAccounts, setInspirationAccounts] = useState<InspirationAccount[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
@@ -108,14 +109,27 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
         setConnectLoading(true);
         try {
           // Always try real API request first
-          const connection = await twitterService.getUserConnection();
-          setTwitterConnection(connection);
+          const status = await twitterService.getConnectionStatus();
+          setTwitterStatus(status);
+          
+          // Also get connection details if connected
+          if (status.is_twitter_connected) {
+            const connection = await twitterService.getUserConnection();
+            setTwitterConnection(connection);
+          } else {
+            setTwitterConnection(null);
+          }
         } catch (error) {
           console.error('Error checking Twitter connection:', error);
           // In mock mode, simulate connection status
           if (mockMode) {
             console.log('Mock mode - simulating Twitter connection status');
             setTwitterConnection(null); // Default to not connected for testing
+            setTwitterStatus({
+              is_twitter_connected: false,
+              is_authorized: false,
+              is_expired: false
+            });
           }
         } finally {
           setConnectLoading(false);
@@ -500,9 +514,12 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                   </div>
                   <div className={`px-3 py-1 rounded-full text-sm font-medium ${
                     connectLoading ? 'bg-blue-100 text-blue-800' :
-                    twitterConnection ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    twitterStatus?.is_authorized && twitterStatus?.is_expired ? 'bg-amber-100 text-amber-800' :
+                    twitterStatus?.is_twitter_connected ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                   }`}>
-                    {connectLoading ? 'Checking...' : (twitterConnection ? 'Connected' : 'Disconnected')}
+                    {connectLoading ? 'Checking...' : 
+                     twitterStatus?.is_authorized && twitterStatus?.is_expired ? 'Token Expired' :
+                     twitterStatus?.is_twitter_connected ? 'Connected' : 'Disconnected'}
                   </div>
                 </div>
 
@@ -510,29 +527,53 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
                   </div>
-                ) : twitterConnection ? (
+                ) : twitterStatus?.is_authorized ? (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-blue-900 mb-2">Account Information</h4>
-                        <p className="text-sm text-blue-700">Username: @{twitterConnection.platform_username}</p>
-                        <p className="text-sm text-blue-700">Connected: {new Date(twitterConnection.connected_at).toLocaleDateString()}</p>
+                    {twitterStatus.is_expired && (
+                      <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <AlertCircle className="w-5 h-5 text-amber-600" />
+                          <h4 className="font-medium text-amber-900">Token Expired</h4>
+                        </div>
+                        <p className="text-sm text-amber-700 mb-3">Your X connection token has expired. Please reconnect to continue using X features.</p>
+                        <button
+                          onClick={handleConnectTwitter}
+                          className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+                        >
+                          Reconnect X
+                        </button>
                       </div>
-                      <div className="bg-green-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-green-900 mb-2">API Access</h4>
-                        <p className="text-sm text-green-700">Status: Active</p>
-                        <p className="text-sm text-green-700">Permissions: Read and Post</p>
-                      </div>
-                    </div>
+                    )}
                     
-                    <div className="flex space-x-3">
-                      <button
-                        onClick={handleDisconnectTwitter}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                      >
-                        Disconnect X
-                      </button>
-                    </div>
+                    {twitterConnection && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className={`p-4 rounded-lg ${twitterStatus.is_expired ? 'bg-amber-50' : 'bg-blue-50'}`}>
+                          <h4 className={`font-medium mb-2 ${twitterStatus.is_expired ? 'text-amber-900' : 'text-blue-900'}`}>Account Information</h4>
+                          <p className={`text-sm ${twitterStatus.is_expired ? 'text-amber-700' : 'text-blue-700'}`}>Username: @{twitterConnection.platform_username}</p>
+                          <p className={`text-sm ${twitterStatus.is_expired ? 'text-amber-700' : 'text-blue-700'}`}>Connected: {new Date(twitterConnection.connected_at).toLocaleDateString()}</p>
+                        </div>
+                        <div className={`p-4 rounded-lg ${twitterStatus.is_expired ? 'bg-red-50' : 'bg-green-50'}`}>
+                          <h4 className={`font-medium mb-2 ${twitterStatus.is_expired ? 'text-red-900' : 'text-green-900'}`}>API Access</h4>
+                          <p className={`text-sm ${twitterStatus.is_expired ? 'text-red-700' : 'text-green-700'}`}>
+                            Status: {twitterStatus.is_expired ? 'Expired' : 'Active'}
+                          </p>
+                          <p className={`text-sm ${twitterStatus.is_expired ? 'text-red-700' : 'text-green-700'}`}>
+                            Permissions: {twitterStatus.is_expired ? 'None' : 'Read and Post'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {!twitterStatus.is_expired && (
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={handleDisconnectTwitter}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          Disconnect X
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-4">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Calendar, MapPin, Link, Star, Settings, Edit3, Check, X, Camera, Shield, Bell, CreditCard, Users, Activity, TrendingUp, MessageSquare, BarChart3, Clock, Gift, AlertCircle, LogOut, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { twitterService, TwitterConnection } from '../lib/twitterService';
+import { twitterService, TwitterConnection, TwitterConnectionStatus } from '../lib/twitterService';
 
 interface ProfileProps {
   onClose?: () => void;
@@ -15,6 +15,7 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
   const [activeSection, setActiveSection] = useState(initialSection);
   const [isConnectingTwitter, setIsConnectingTwitter] = useState(false);
   const [twitterConnection, setTwitterConnection] = useState<TwitterConnection | null>(null);
+  const [twitterStatus, setTwitterStatus] = useState<TwitterConnectionStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [connectLoading, setConnectLoading] = useState(false);
 
@@ -59,10 +60,20 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
     if (user) {
       setConnectLoading(true);
       try {
-        const connection = await twitterService.getUserConnection();
-        setTwitterConnection(connection);
+        // 获取详细的连接状态信息
+        const status = await twitterService.getConnectionStatus();
+        setTwitterStatus(status);
+        
+        // 保持向后兼容，设置连接信息
+        if (status?.connection_details) {
+          setTwitterConnection(status.connection_details);
+        } else {
+          setTwitterConnection(null);
+        }
       } catch (error) {
         console.error('Error checking Twitter connection:', error);
+        setTwitterStatus(null);
+        setTwitterConnection(null);
       } finally {
         setConnectLoading(false);
       }
@@ -291,17 +302,36 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Checking connection...
                   </span>
+                ) : twitterStatus ? (
+                  twitterStatus.is_authorized ? (
+                    twitterStatus.is_expired ? (
+                      <span className="text-amber-600 font-medium">
+                        Token Expired - @{twitterConnection?.platform_username}
+                      </span>
+                    ) : (
+                      <span className="text-green-600 font-medium">
+                        Connected @{twitterConnection?.platform_username}
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-gray-500">Not connected</span>
+                  )
                 ) : (
-                  twitterConnection ? `Connected @${twitterConnection.platform_username}` : 'Not connected'
+                  <span className="text-gray-500">Not connected</span>
                 )}
               </p>
             </div>
           </div>
           <div className={`px-3 py-1 rounded-full text-sm font-medium ${
             connectLoading ? 'bg-blue-100 text-blue-800' :
-            twitterConnection ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+            twitterStatus?.is_authorized ? (
+              twitterStatus.is_expired ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
+            ) : 'bg-gray-100 text-gray-800'
           }`}>
-            {connectLoading ? 'Checking...' : (twitterConnection ? 'Connected' : 'Disconnected')}
+            {connectLoading ? 'Checking...' : 
+             twitterStatus?.is_authorized ? (
+               twitterStatus.is_expired ? 'Token Expired' : 'Connected'
+             ) : 'Disconnected'}
           </div>
         </div>
 
@@ -309,28 +339,58 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           </div>
-        ) : twitterConnection ? (
+        ) : twitterStatus?.is_authorized ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">Account Information</h4>
-                <p className="text-sm text-blue-700">Username: @{twitterConnection.platform_username}</p>
-                <p className="text-sm text-blue-700">Connected: {new Date(twitterConnection.connected_at).toLocaleDateString()}</p>
+            {/* 过期状态警告 */}
+            {twitterStatus.is_expired && (
+              <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <AlertCircle className="w-5 h-5 text-amber-600" />
+                  <h4 className="font-medium text-amber-900">Token Expired</h4>
+                </div>
+                <p className="text-sm text-amber-700 mb-3">
+                  Your X (Twitter) connection token has expired. Please reconnect to continue using X features.
+                </p>
+                <button
+                  onClick={handleConnectTwitter}
+                  className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm"
+                >
+                  Reconnect X
+                </button>
               </div>
-              <div className="bg-green-50 p-4 rounded-lg">
-                <h4 className="font-medium text-green-900 mb-2">API Access</h4>
-                <p className="text-sm text-green-700">Status: Active</p>
-                <p className="text-sm text-green-700">Permissions: Read and Post</p>
+            )}
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className={`p-4 rounded-lg ${twitterStatus.is_expired ? 'bg-amber-50' : 'bg-blue-50'}`}>
+                <h4 className={`font-medium mb-2 ${twitterStatus.is_expired ? 'text-amber-900' : 'text-blue-900'}`}>Account Information</h4>
+                <p className={`text-sm ${twitterStatus.is_expired ? 'text-amber-700' : 'text-blue-700'}`}>Username: @{twitterConnection.platform_username}</p>
+                <p className={`text-sm ${twitterStatus.is_expired ? 'text-amber-700' : 'text-blue-700'}`}>Connected: {new Date(twitterConnection.connected_at).toLocaleDateString()}</p>
+                {twitterConnection.expires_at && (
+                  <p className={`text-sm ${twitterStatus.is_expired ? 'text-amber-700' : 'text-blue-700'}`}>
+                    Expires: {new Date(twitterConnection.expires_at).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
+              <div className={`p-4 rounded-lg ${twitterStatus.is_expired ? 'bg-red-50' : 'bg-green-50'}`}>
+                <h4 className={`font-medium mb-2 ${twitterStatus.is_expired ? 'text-red-900' : 'text-green-900'}`}>API Access</h4>
+                <p className={`text-sm ${twitterStatus.is_expired ? 'text-red-700' : 'text-green-700'}`}>
+                  Status: {twitterStatus.is_expired ? 'Expired' : 'Active'}
+                </p>
+                <p className={`text-sm ${twitterStatus.is_expired ? 'text-red-700' : 'text-green-700'}`}>
+                  Permissions: {twitterStatus.is_expired ? 'None (Expired)' : 'Read and Post'}
+                </p>
               </div>
             </div>
             
             <div className="flex space-x-3">
-              <button
-                onClick={handleDisconnectTwitter}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Disconnect X
-              </button>
+              {!twitterStatus.is_expired && (
+                <button
+                  onClick={handleDisconnectTwitter}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Disconnect X
+                </button>
+              )}
             </div>
           </div>
         ) : (

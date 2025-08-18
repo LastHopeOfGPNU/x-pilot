@@ -1,6 +1,16 @@
 import { supabase } from './supabase';
 import { User } from '@supabase/supabase-js';
 
+// Twitter连接状态响应接口
+export interface TwitterConnectionStatus {
+  is_twitter_connected: boolean;
+  is_authorized: boolean;
+  is_expired: boolean;
+  connection_details: TwitterConnection | null;
+  total_connections: number;
+  debug_info?: any;
+}
+
 // Twitter连接信息接口
 export interface TwitterConnection {
   id?: string;
@@ -298,6 +308,45 @@ class TwitterService {
       }
 
       return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // 获取详细的连接状态信息
+  async getConnectionStatus(): Promise<TwitterConnectionStatus | null> {
+    try {
+      // 先尝试获取当前session
+      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        return null;
+      }
+      
+      if (!currentSession) {
+        return null;
+      }
+      
+      // 获取用户信息
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        return null;
+      }
+
+      // 调用edge function检查Twitter连接
+      const { data, error } = await supabase.functions.invoke('check-twitter-connection', {
+        headers: {
+          Authorization: `Bearer ${currentSession.access_token}`,
+        },
+      });
+
+      if (error) {
+        return null;
+      }
+
+      // 返回完整的状态信息
+      return data as TwitterConnectionStatus;
     } catch (error) {
       return null;
     }
