@@ -24,6 +24,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useDataCache } from '../contexts/DataCacheContext';
 import { dashboardService, DashboardData, Account } from '../lib/dashboardService';
+import { onboardingService, OnboardingStatusResponse } from '../lib/onboardingService';
 import { TwitterModal } from './TwitterModal';
 
 // Loading Card Component
@@ -44,6 +45,124 @@ const ErrorCard: React.FC<{ message: string; onRetry: () => void }> = ({ message
     </div>
   </div>
 );
+
+// OnboardingProgress组件
+const OnboardingProgress: React.FC<{ 
+  status: OnboardingStatusResponse | null; 
+  loading: boolean; 
+}> = ({ status, loading }) => {
+  const steps = ['START', 'CONNECT', 'PICK_ACCOUNTS', 'COMPLETE'];
+  
+  if (loading) {
+    return (
+      <div className="w-full p-4 mb-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
+        <div className="flex justify-center items-center">
+          <Loader className="w-5 h-5 text-blue-500 animate-spin" />
+          <span className="ml-2 text-sm text-gray-600">Loading onboarding status...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!status) {
+    return null;
+  }
+
+  // 如果已完成，显示完成状态和今天日期
+  if (status.is_finished) {
+    const today = new Date().toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    return (
+      <div className="w-full p-4 mb-6 rounded-xl border backdrop-blur-sm bg-gradient-to-r from-green-50/80 to-emerald-50/80 border-green-200/50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <CheckCircle className="w-6 h-6 text-green-600 mr-3" />
+            <div>
+              <h3 className="text-lg font-semibold text-green-800">Onboarding Complete!</h3>
+              <p className="text-sm text-green-700">Welcome to XPilot! You're all set up and ready to go.</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-green-600 font-medium">Completed on</p>
+            <p className="text-sm text-green-800">{today}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 显示进度条
+  const currentStepIndex = steps.indexOf(status.current_step);
+  const totalSteps = steps.length;
+  const remainingSteps = totalSteps - currentStepIndex - 1;
+  
+  return (
+    <div className="w-full p-4 mb-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800">Onboarding Progress</h3>
+          <p className="text-sm text-gray-600">
+            Step {currentStepIndex + 1} of {totalSteps} • {remainingSteps} steps remaining
+          </p>
+        </div>
+        <div className="text-right">
+          <span className="text-sm font-medium text-blue-600">
+            {Math.round(((currentStepIndex + 1) / totalSteps) * 100)}%
+          </span>
+        </div>
+      </div>
+      
+      {/* 进度条 */}
+      <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+        <div 
+          className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500"
+          style={{ width: `${((currentStepIndex + 1) / totalSteps) * 100}%` }}
+        ></div>
+      </div>
+      
+      {/* 步骤指示器 */}
+      <div className="flex justify-between items-center">
+        {steps.map((step, index) => {
+          const isCompleted = index < currentStepIndex;
+          const isCurrent = index === currentStepIndex;
+          const stepNames = {
+            'START': 'Start',
+            'CONNECT': 'Connect',
+            'PICK_ACCOUNTS': 'Pick Accounts',
+            'COMPLETE': 'Complete'
+          };
+          
+          return (
+            <div key={step} className="flex flex-col items-center">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-300 ${
+                isCompleted 
+                  ? 'bg-green-500 text-white' 
+                  : isCurrent 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-gray-200 text-gray-500'
+              }`}>
+                {isCompleted ? (
+                  <CheckCircle className="w-4 h-4" />
+                ) : (
+                  index + 1
+                )}
+              </div>
+              <span className={`mt-1 text-xs font-medium ${
+                isCompleted || isCurrent ? 'text-gray-800' : 'text-gray-500'
+              }`}>
+                {stepNames[step as keyof typeof stepNames]}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 interface DashboardProps {
   onNavigate?: (section: string, profileSection?: string) => void;
@@ -85,6 +204,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   });
   const [refreshButtonFlash, setRefreshButtonFlash] = useState(false);
   
+  // Onboarding状态
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatusResponse | null>(null);
+  const [onboardingLoading, setOnboardingLoading] = useState(true);
+  
   // 缓存数据的引用
   const cachedDataRef = useRef<DashboardData | null>(null);
   
@@ -123,6 +246,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     }
   };
 
+  // 获取onboarding状态
+  const fetchOnboardingStatus = async () => {
+    try {
+      setOnboardingLoading(true);
+      const status = await onboardingService.getCurrentStep();
+      setOnboardingStatus(status);
+    } catch (error) {
+      console.error('Failed to fetch onboarding status:', error);
+      // 如果获取失败，假设已完成
+      setOnboardingStatus({ is_finished: true, current_step: 'ENGAGEMENT' });
+    } finally {
+      setOnboardingLoading(false);
+    }
+  };
+
   // Get user display name
   const getUserDisplayName = () => {
     if (user?.user_metadata?.full_name) {
@@ -134,8 +272,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     return 'User';
   };
 
-  // 组件加载时获取Dashboard数据
+  // 组件加载时获取Dashboard数据和onboarding状态
   useEffect(() => {
+    // 获取onboarding状态
+    fetchOnboardingStatus();
+    
     // 首次加载时，如果有缓存数据则优先显示
     if (dashboardData) {
       // 已有缓存数据，后台更新
@@ -292,6 +433,11 @@ const ErrorCard = ({ message, className = "" }: { message: string; className?: s
         <div className="absolute top-1/3 right-1/3 w-64 h-64 bg-gradient-to-r rounded-full blur-3xl animate-pulse from-cyan-400/5 to-blue-400/5" style={{ animationDelay: '2s' }}></div>
       </div>
 
+      {/* Onboarding Progress - 最上方 */}
+      <div className="relative z-10 p-6 pb-0">
+        <OnboardingProgress status={onboardingStatus} loading={onboardingLoading} />
+      </div>
+
       {/* Header */}
       <div className="relative z-10 flex-shrink-0 p-6 border-b backdrop-blur-sm border-white/50 bg-white/30">
         <div className="flex justify-between items-center">
@@ -303,7 +449,10 @@ const ErrorCard = ({ message, className = "" }: { message: string; className?: s
                 <div className="ml-3 w-5 h-5 rounded-full border-b-2 border-blue-500 animate-spin"></div>
               )}
             </h1>
-            <p className="mt-1 text-gray-600">Welcome back, {getUserDisplayName()}! Click the Quick Actions below to quickly use features.</p>
+            {/* 只有在onboarding未完成时才显示欢迎语 */}
+            {onboardingStatus && !onboardingStatus.is_finished && (
+              <p className="mt-1 text-gray-600">Welcome back, {getUserDisplayName()}! Click the Quick Actions below to quickly use features.</p>
+            )}
           </div>
           <div className="flex items-center space-x-3">
             {error && (
@@ -333,57 +482,7 @@ const ErrorCard = ({ message, className = "" }: { message: string; className?: s
 
       {/* Content */}
       <div className="overflow-y-auto relative z-10 flex-1 p-6 space-y-6">
-        {/* Key Metrics */}
-        <div className="grid grid-cols-2 gap-4">
-          {loading || error ? (
-            <>
-              {error ? (
-                <ErrorCard message="Failed to load metrics" />
-              ) : (
-                <LoadingCard />
-              )}
-              {error ? (
-                <ErrorCard message="Failed to load metrics" />
-              ) : (
-                <LoadingCard />
-              )}
-            </>
-          ) : dashboardData ? (
-            <>
-              <div className="p-6 rounded-xl border backdrop-blur-sm transition-all duration-300 bg-white/60 border-white/50 hover:shadow-lg group">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="text-2xl font-bold text-blue-600 transition-transform duration-300 group-hover:scale-110">
-                      {animatedStats.totalReplies.toLocaleString()}
-                    </div>
-                    <div className="text-sm text-gray-600">Total Replies</div>
-                    <div className="flex items-center mt-2 text-xs text-green-600">
-                      <ArrowUpRight className="mr-1 w-3 h-3" />
-                      {dashboardData?.stats?.total_replies_change || 0}
-                    </div>
-                  </div>
-                  <MessageSquare className="w-8 h-8 text-blue-600 transition-transform duration-300 group-hover:rotate-12" />
-                </div>
-              </div>
 
-              <div className="p-6 rounded-xl border backdrop-blur-sm transition-all duration-300 bg-white/60 border-white/50 hover:shadow-lg group">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="text-2xl font-bold text-green-600 transition-transform duration-300 group-hover:scale-110">
-                      {animatedStats.engagementRate}%
-                    </div>
-                    <div className="text-sm text-gray-600">Engagement Rate</div>
-                    <div className="flex items-center mt-2 text-xs text-green-600">
-                      <ArrowUpRight className="mr-1 w-3 h-3" />
-                      {dashboardData?.stats?.engagement_rate_change || 0}
-                    </div>
-                  </div>
-                  <Heart className="w-8 h-8 text-green-600 transition-transform duration-300 group-hover:scale-110" />
-                </div>
-              </div>
-            </>
-          ) : null}
-        </div>
 
         {/* Inspiration Accounts Overview */}
         <div className="p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
@@ -624,6 +723,58 @@ const ErrorCard = ({ message, className = "" }: { message: string; className?: s
                  );
                 })}
              </div>
+          ) : null}
+        </div>
+
+        {/* Key Metrics */}
+        <div className="grid grid-cols-2 gap-4">
+          {loading || error ? (
+            <>
+              {error ? (
+                <ErrorCard message="Failed to load metrics" onRetry={() => fetchDashboardData()} />
+              ) : (
+                <LoadingCard />
+              )}
+              {error ? (
+                <ErrorCard message="Failed to load metrics" onRetry={() => fetchDashboardData()} />
+              ) : (
+                <LoadingCard />
+              )}
+            </>
+          ) : dashboardData ? (
+            <>
+              <div className="p-6 rounded-xl border backdrop-blur-sm transition-all duration-300 bg-white/60 border-white/50 hover:shadow-lg group">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <div className="text-2xl font-bold text-blue-600 transition-transform duration-300 group-hover:scale-110">
+                      {animatedStats.totalReplies.toLocaleString()}
+                    </div>
+                    <div className="text-sm text-gray-600">Total Replies</div>
+                    <div className="flex items-center mt-2 text-xs text-green-600">
+                      <ArrowUpRight className="mr-1 w-3 h-3" />
+                      {dashboardData?.stats?.total_replies_change || 0}
+                    </div>
+                  </div>
+                  <MessageSquare className="w-8 h-8 text-blue-600 transition-transform duration-300 group-hover:rotate-12" />
+                </div>
+              </div>
+
+              <div className="p-6 rounded-xl border backdrop-blur-sm transition-all duration-300 bg-white/60 border-white/50 hover:shadow-lg group">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <div className="text-2xl font-bold text-green-600 transition-transform duration-300 group-hover:scale-110">
+                      {animatedStats.engagementRate}%
+                    </div>
+                    <div className="text-sm text-gray-600">Engagement Rate</div>
+                    <div className="flex items-center mt-2 text-xs text-green-600">
+                      <ArrowUpRight className="mr-1 w-3 h-3" />
+                      {dashboardData?.stats?.engagement_rate_change || 0}
+                    </div>
+                  </div>
+                  <Heart className="w-8 h-8 text-green-600 transition-transform duration-300 group-hover:scale-110" />
+                </div>
+              </div>
+            </>
           ) : null}
         </div>
 
