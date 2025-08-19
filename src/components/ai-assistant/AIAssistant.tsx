@@ -241,9 +241,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       setRetryCount(0);
       setShouldStopRetry(false);
 
-      // Clear input and capability
+      // Clear input only, keep capability selected
       setInputValue('');
-      setSelectedCapability(null);
     }
 
     setIsLoading(true);
