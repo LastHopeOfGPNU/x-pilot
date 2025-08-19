@@ -82,12 +82,12 @@ export const DataCacheProvider: React.FC<DataCacheProviderProps> = ({ children }
   };
   
   // 通用缓存方法
-  const getCache = <T>(key: string): T | null => {
+  const getCache = <T,>(key: string): T | null => {
     const cacheItem = cacheRef.current.get(key);
     return cacheItem?.data || null;
   };
   
-  const setCache = <T>(key: string, data: T) => {
+  const setCache = <T,>(key: string, data: T) => {
     cacheRef.current.set(key, {
       data,
       timestamp: Date.now(),
