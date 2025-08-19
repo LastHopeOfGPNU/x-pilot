@@ -24,6 +24,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useDataCache } from '../contexts/DataCacheContext';
 import { dashboardService, DashboardData } from '../lib/dashboardService';
+import { TwitterModal } from './TwitterModal';
 
 // Loading Card Component
 const LoadingCard: React.FC = () => (
@@ -40,12 +41,6 @@ const ErrorCard: React.FC<{ message: string; onRetry: () => void }> = ({ message
     <div className="flex flex-col justify-center items-center h-20 text-center">
       <AlertCircle className="mb-2 w-6 h-6 text-red-500" />
       <p className="mb-2 text-sm text-red-600">{message}</p>
-      <button 
-        onClick={onRetry}
-        className="px-3 py-1 text-xs text-white bg-blue-600 rounded transition-colors hover:bg-blue-700"
-      >
-        Retry
-      </button>
     </div>
   </div>
 );
@@ -75,6 +70,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     totalReposts: 0,
     engagementRate: 0
   });
+  
+  // Twitter模态框状态
+  const [twitterModal, setTwitterModal] = useState({
+    isOpen: false,
+    username: '',
+    displayName: ''
+  });
+  const [refreshButtonFlash, setRefreshButtonFlash] = useState(false);
   
   // 缓存数据的引用
   const cachedDataRef = useRef<DashboardData | null>(null);
@@ -220,10 +223,31 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     onNavigate?.(section);
   };
 
-  // Handle account click to open Twitter profile
-  const handleAccountClick = (username: string) => {
-    const twitterUrl = `https://x.com/${username}`;
-    window.open(twitterUrl, '_blank', 'noopener,noreferrer');
+  // Handle account click to open Twitter modal
+  const handleAccountClick = (username: string, displayName?: string) => {
+    setTwitterModal({
+      isOpen: true,
+      username,
+      displayName: displayName || ''
+    });
+  };
+
+  // Close Twitter modal
+  const closeTwitterModal = () => {
+    setTwitterModal({
+      isOpen: false,
+      username: '',
+      displayName: ''
+    });
+  };
+
+  // Handle Twitter modal load error
+  const handleTwitterLoadError = () => {
+    setRefreshButtonFlash(true);
+    // Stop flashing after 3 seconds
+    setTimeout(() => {
+      setRefreshButtonFlash(false);
+    }, 3000);
   };
 
   // Loading component for individual sections
@@ -262,7 +286,7 @@ const ErrorCard = ({ message, className = "" }: { message: string; className?: s
               <Rocket className="mr-3 w-7 h-7 text-blue-600" />
               Dashboard
               {backgroundLoading && (
-                <div className="ml-3 animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                <div className="ml-3 w-5 h-5 rounded-full border-b-2 border-blue-500 animate-spin"></div>
               )}
             </h1>
             <p className="mt-1 text-gray-600">Welcome back, {getUserDisplayName()}! Click the Quick Actions below to quickly use features.</p>
@@ -272,9 +296,10 @@ const ErrorCard = ({ message, className = "" }: { message: string; className?: s
               <button
                 onClick={() => fetchDashboardData()}
                 disabled={loading || backgroundLoading}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg transition-all duration-200 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg transition-all duration-200 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  refreshButtonFlash ? 'animate-pulse' : ''}`}
               >
-                <RefreshCw className={`w-4 h-4 ${(loading || backgroundLoading) ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${(loading || backgroundLoading) ? 'animate-spin' : refreshButtonFlash ? 'animate-bounce' : ''}`} />
                 <span>Refresh</span>
               </button>
             )}
@@ -426,9 +451,9 @@ const ErrorCard = ({ message, className = "" }: { message: string; className?: s
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleAccountClick(account.username);
+                        handleAccountClick(account.username, account.display_name);
                       }}
-                      className="flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                      className="flex justify-center items-center w-8 h-8 rounded-full transition-all duration-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                       aria-label={`Open ${account.display_name}'s Twitter profile`}
                     >
                       <ChevronRight className="w-4 h-4 text-gray-400 transition-colors group-hover:text-gray-600" />
@@ -660,6 +685,15 @@ const ErrorCard = ({ message, className = "" }: { message: string; className?: s
           ) : null}
         </div>
       </div>
+      
+      {/* Twitter Modal */}
+      <TwitterModal
+        isOpen={twitterModal.isOpen}
+        onClose={closeTwitterModal}
+        username={twitterModal.username}
+        displayName={twitterModal.displayName}
+        onLoadError={handleTwitterLoadError}
+      />
     </div>
   );
 };
