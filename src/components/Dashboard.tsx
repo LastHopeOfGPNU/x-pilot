@@ -25,22 +25,22 @@ import { dashboardService, DashboardData } from '../lib/dashboardService';
 
 // Loading Card Component
 const LoadingCard: React.FC = () => (
-  <div className="bg-white/60 backdrop-blur-sm p-6 rounded-xl border border-white/50">
-    <div className="flex items-center justify-center h-20">
-      <Loader className="w-6 h-6 animate-spin text-blue-500" />
+  <div className="p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
+    <div className="flex justify-center items-center h-20">
+      <Loader className="w-6 h-6 text-blue-500 animate-spin" />
     </div>
   </div>
 );
 
 // Error Card Component
 const ErrorCard: React.FC<{ message: string; onRetry: () => void }> = ({ message, onRetry }) => (
-  <div className="bg-white/60 backdrop-blur-sm p-6 rounded-xl border border-white/50">
-    <div className="flex flex-col items-center justify-center h-20 text-center">
-      <AlertCircle className="w-6 h-6 text-red-500 mb-2" />
-      <p className="text-red-600 text-sm mb-2">{message}</p>
+  <div className="p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
+    <div className="flex flex-col justify-center items-center h-20 text-center">
+      <AlertCircle className="mb-2 w-6 h-6 text-red-500" />
+      <p className="mb-2 text-sm text-red-600">{message}</p>
       <button 
         onClick={onRetry}
-        className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
+        className="px-3 py-1 text-xs text-white bg-blue-600 rounded transition-colors hover:bg-blue-700"
       >
         Retry
       </button>
@@ -184,22 +184,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   // Loading component for individual sections
   const LoadingCard = ({ className = "" }: { className?: string }) => (
-    <div className={`bg-white/60 backdrop-blur-sm rounded-xl border border-white/50 p-6 ${className}`}>
-      <div className="flex items-center justify-center h-20">
-        <Loader className="w-6 h-6 animate-spin text-blue-500" />
+    <div className={`p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50 ${className}`}>
+      <div className="flex justify-center items-center h-20">
+        <Loader className="w-6 h-6 text-blue-500 animate-spin" />
       </div>
     </div>
   );
 
   // Error component for individual sections
   const ErrorCard = ({ message, onRetry, className = "" }: { message: string; onRetry: () => void; className?: string }) => (
-    <div className={`bg-white/60 backdrop-blur-sm rounded-xl border border-white/50 p-6 ${className}`}>
-      <div className="flex flex-col items-center justify-center h-20 text-center">
-        <AlertCircle className="w-6 h-6 text-red-500 mb-2" />
-        <p className="text-red-600 text-sm mb-2">{message}</p>
+    <div className={`p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50 ${className}`}>
+      <div className="flex flex-col justify-center items-center h-20 text-center">
+        <AlertCircle className="mb-2 w-6 h-6 text-red-500" />
+        <p className="mb-2 text-sm text-red-600">{message}</p>
         <button 
           onClick={onRetry}
-          className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
+          className="px-3 py-1 text-xs text-white bg-blue-600 rounded transition-colors hover:bg-blue-700"
         >
           Retry
         </button>
@@ -208,23 +208,23 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   );
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 rounded-lg border border-gray-200 shadow-sm relative overflow-hidden">
+    <div className="flex overflow-hidden relative flex-col h-full bg-gradient-to-br via-blue-50 to-indigo-50 rounded-lg border border-gray-200 shadow-sm from-slate-50">
       {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/10 to-blue-400/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-indigo-400/10 to-pink-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-1/3 right-1/3 w-64 h-64 bg-gradient-to-r from-cyan-400/5 to-blue-400/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+      <div className="overflow-hidden absolute inset-0 pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br rounded-full blur-3xl animate-pulse from-blue-400/10 to-blue-400/10"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr rounded-full blur-3xl animate-pulse from-indigo-400/10 to-pink-400/10" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-1/3 right-1/3 w-64 h-64 bg-gradient-to-r rounded-full blur-3xl animate-pulse from-cyan-400/5 to-blue-400/5" style={{ animationDelay: '2s' }}></div>
       </div>
 
       {/* Header */}
-      <div className="flex-shrink-0 p-6 border-b border-white/50 backdrop-blur-sm bg-white/30 relative z-10">
-        <div className="flex items-center justify-between">
+      <div className="relative z-10 flex-shrink-0 p-6 border-b backdrop-blur-sm border-white/50 bg-white/30">
+        <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-              <Rocket className="w-7 h-7 mr-3 text-blue-600" />
+            <h1 className="flex items-center text-2xl font-bold text-gray-900">
+              <Rocket className="mr-3 w-7 h-7 text-blue-600" />
               Dashboard
             </h1>
-            <p className="text-gray-600 mt-1">Welcome back, {getUserDisplayName()}! Click the Quick Actions below to quickly use features.</p>
+            <p className="mt-1 text-gray-600">Welcome back, {getUserDisplayName()}! Click the Quick Actions below to quickly use features.</p>
           </div>
           <div className="flex items-center space-x-2">
             <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${
@@ -242,7 +242,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       </div>
 
       {/* Content */}
-      <div className="overflow-y-auto flex-1 p-6 relative z-10 space-y-6">
+      <div className="overflow-y-auto relative z-10 flex-1 p-6 space-y-6">
         {/* Key Metrics */}
         <div className="grid grid-cols-2 gap-4">
           {loading || error ? (
@@ -260,35 +260,35 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </>
           ) : dashboardData ? (
             <>
-              <div className="bg-white/60 backdrop-blur-sm p-6 rounded-xl border border-white/50 hover:shadow-lg transition-all duration-300 group">
-                <div className="flex items-center justify-between">
+              <div className="p-6 rounded-xl border backdrop-blur-sm transition-all duration-300 bg-white/60 border-white/50 hover:shadow-lg group">
+                <div className="flex justify-between items-center">
                   <div>
-                    <div className="text-2xl font-bold text-blue-600 group-hover:scale-110 transition-transform duration-300">
+                    <div className="text-2xl font-bold text-blue-600 transition-transform duration-300 group-hover:scale-110">
                       {animatedStats.totalReplies.toLocaleString()}
                     </div>
                     <div className="text-sm text-gray-600">Total Replies</div>
                     <div className="flex items-center mt-2 text-xs text-green-600">
-                      <ArrowUpRight className="w-3 h-3 mr-1" />
+                      <ArrowUpRight className="mr-1 w-3 h-3" />
                       {dashboardData?.stats?.total_replies_change || 0}
                     </div>
                   </div>
-                  <MessageSquare className="w-8 h-8 text-blue-600 group-hover:rotate-12 transition-transform duration-300" />
+                  <MessageSquare className="w-8 h-8 text-blue-600 transition-transform duration-300 group-hover:rotate-12" />
                 </div>
               </div>
 
-              <div className="bg-white/60 backdrop-blur-sm p-6 rounded-xl border border-white/50 hover:shadow-lg transition-all duration-300 group">
-                <div className="flex items-center justify-between">
+              <div className="p-6 rounded-xl border backdrop-blur-sm transition-all duration-300 bg-white/60 border-white/50 hover:shadow-lg group">
+                <div className="flex justify-between items-center">
                   <div>
-                    <div className="text-2xl font-bold text-green-600 group-hover:scale-110 transition-transform duration-300">
+                    <div className="text-2xl font-bold text-green-600 transition-transform duration-300 group-hover:scale-110">
                       {animatedStats.engagementRate}%
                     </div>
                     <div className="text-sm text-gray-600">Engagement Rate</div>
                     <div className="flex items-center mt-2 text-xs text-green-600">
-                      <ArrowUpRight className="w-3 h-3 mr-1" />
+                      <ArrowUpRight className="mr-1 w-3 h-3" />
                       {dashboardData?.stats?.engagement_rate_change || 0}
                     </div>
                   </div>
-                  <Heart className="w-8 h-8 text-green-600 group-hover:scale-110 transition-transform duration-300" />
+                  <Heart className="w-8 h-8 text-green-600 transition-transform duration-300 group-hover:scale-110" />
                 </div>
               </div>
             </>
@@ -296,27 +296,27 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
 
         {/* Inspiration Accounts Overview */}
-        <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-white/50 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <Crosshair className="w-5 h-5 mr-2 text-blue-500" />
+        <div className="p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="flex items-center text-lg font-semibold text-gray-900">
+              <Crosshair className="mr-2 w-5 h-5 text-blue-500" />
               Inspiration Accounts Overview
             </h3>
             <button 
               onClick={() => onNavigate?.('Inspiration Accounts')}
-              className="text-sm text-blue-600 hover:text-blue-800 flex items-center transition-colors"
+              className="flex items-center text-sm text-blue-600 transition-colors hover:text-blue-800"
             >
               View All
-              <ChevronRight className="w-4 h-4 ml-1" />
+              <ChevronRight className="ml-1 w-4 h-4" />
             </button>
           </div>
           
-          <div className="text-center py-8">
-            <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-500 mb-4">Quick access to manage inspiration accounts</p>
+          <div className="py-8 text-center">
+            <Users className="mx-auto mb-3 w-12 h-12 text-gray-400" />
+            <p className="mb-4 text-gray-500">Quick access to manage inspiration accounts</p>
             <button 
               onClick={() => onNavigate?.('Inspiration Accounts')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700"
             >
               Manage Accounts
             </button>
@@ -324,10 +324,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-white/50 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <Rocket className="w-5 h-5 mr-2 text-blue-500" />
+        <div className="p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="flex items-center text-lg font-semibold text-gray-900">
+              <Rocket className="mr-2 w-5 h-5 text-blue-500" />
               Quick Actions
             </h3>
           </div>
@@ -344,7 +344,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                   disabled={isDisabled}
                   className={`p-4 rounded-lg border transition-all duration-200 text-left group ${
                     isDisabled 
-                      ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60' 
+                      ? 'bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed' 
                       : 'border-gray-200 hover:border-gray-300 hover:shadow-md bg-white/50 hover:bg-white/80'
                   }`}
                 >
@@ -384,33 +384,33 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
 
         {/* Recent Activity */}
-        <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-white/50 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <Activity className="w-5 h-5 mr-2 text-blue-500" />
+        <div className="p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="flex items-center text-lg font-semibold text-gray-900">
+              <Activity className="mr-2 w-5 h-5 text-blue-500" />
               Recent Activity
             </h3>
             {!loading && !error && (
               <button 
                 onClick={() => onNavigate?.('Profile', 'activity')}
-                className="text-sm text-blue-600 hover:text-blue-800 flex items-center transition-colors"
+                className="flex items-center text-sm text-blue-600 transition-colors hover:text-blue-800"
               >
                 View All
-                <ChevronRight className="w-4 h-4 ml-1" />
+                <ChevronRight className="ml-1 w-4 h-4" />
               </button>
             )}
           </div>
           {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <Loader className="w-6 h-6 animate-spin text-blue-500" />
+            <div className="flex justify-center items-center h-32">
+              <Loader className="w-6 h-6 text-blue-500 animate-spin" />
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center h-32 text-center">
-              <AlertCircle className="w-6 h-6 text-red-500 mb-2" />
-              <p className="text-red-600 text-sm mb-2">Failed to load recent activity</p>
+            <div className="flex flex-col justify-center items-center h-32 text-center">
+              <AlertCircle className="mb-2 w-6 h-6 text-red-500" />
+              <p className="mb-2 text-sm text-red-600">Failed to load recent activity</p>
               <button 
                 onClick={fetchDashboardData}
-                className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
+                className="px-3 py-1 text-xs text-white bg-blue-600 rounded transition-colors hover:bg-blue-700"
               >
                 Retry
               </button>
@@ -425,16 +425,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                  return (
                    <div
                      key={activity.id}
-                     className="flex items-center space-x-4 p-3 rounded-lg hover:bg-white/50 transition-colors cursor-pointer group"
+                     className="flex items-center p-3 space-x-4 rounded-lg transition-colors cursor-pointer hover:bg-white/50 group"
                    >
                      <div className={`p-2 rounded-full group-hover:scale-110 transition-transform duration-200 ${colorClasses.bg}`}>
                        <IconComponent className={`w-4 h-4 ${colorClasses.text}`} />
                      </div>
                      <div className="flex-1">
-                       <p className="text-gray-900 text-sm font-medium">{activity.title}</p>
+                       <p className="text-sm font-medium text-gray-900">{activity.title}</p>
                        <p className="text-xs text-gray-500">{activity.time_ago}</p>
                      </div>
-                     <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
+                     <ChevronRight className="w-4 h-4 text-gray-400 transition-colors group-hover:text-gray-600" />
                    </div>
                  );
                 })}
@@ -459,25 +459,25 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </>
           ) : dashboardData ? (
             <>
-              <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-white/50 p-6">
-                <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
-                  <TrendingUp className="w-5 h-5 mr-2 text-green-500" />
+              <div className="p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
+                <h4 className="flex items-center mb-4 font-semibold text-gray-900">
+                  <TrendingUp className="mr-2 w-5 h-5 text-green-500" />
                   Growth Metrics
                 </h4>
-                <div className="flex items-center justify-center h-20">
+                <div className="flex justify-center items-center h-20">
                    <div className="text-center">
-                     <div className="text-xl font-bold text-gray-600 mb-1">{dashboardData?.growth_metrics?.status || 'N/A'}</div>
+                     <div className="mb-1 text-xl font-bold text-gray-600">{dashboardData?.growth_metrics?.status || 'N/A'}</div>
                 <div className="text-sm text-gray-500">{dashboardData?.growth_metrics?.description || 'No data available'}</div>
                    </div>
                  </div>
               </div>
 
-              <div className="bg-white/60 backdrop-blur-sm rounded-xl border border-white/50 p-6">
-                <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
-                  <Activity className="w-5 h-5 mr-2 text-blue-500" />
+              <div className="p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
+                <h4 className="flex items-center mb-4 font-semibold text-gray-900">
+                  <Activity className="mr-2 w-5 h-5 text-blue-500" />
                   System Status
                 </h4>
-                <div className="space-y-3">
+                {/* <div className="space-y-3">
                    <div className="flex items-center space-x-2">
                      <div className={`w-2 h-2 rounded-full ${
                        dashboardData?.system_status?.auto_engagement_active ? 'bg-green-500' : 'bg-red-500'
@@ -495,6 +495,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                        dashboardData?.system_status?.all_accounts_connected ? 'bg-green-500' : 'bg-red-500'
                      }`}></div>
                      <span className="text-sm text-gray-700">All Accounts {dashboardData?.system_status?.all_accounts_connected ? 'Connected' : 'Disconnected'}</span>
+                   </div>
+                 </div> */}
+                    <div className="flex justify-center items-center h-20">
+                   <div className="text-center">
+                     <div className="mb-1 text-xl font-bold text-gray-600">{dashboardData?.growth_metrics?.status || 'N/A'}</div>
+                <div className="text-sm text-gray-500">{dashboardData?.growth_metrics?.description || 'No data available'}</div>
                    </div>
                  </div>
               </div>
