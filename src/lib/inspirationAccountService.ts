@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { InspirationAccount } from '../types';
+import { apiConfigService } from './apiConfigService';
 
 // 对标账号接口定义
 export interface InspirationAccountResponse {
@@ -37,11 +38,12 @@ export interface ErrorResponse {
 }
 
 class InspirationAccountService {
-  private baseUrl: string;
+  private get baseUrl(): string {
+    return apiConfigService.getApiBaseUrl();
+  }
 
   constructor() {
-    // 使用环境变量或默认的生产地址
-    this.baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://pilotapi.producthot.top';
+    // baseUrl 现在通过 getter 动态获取
   }
 
   // 获取认证头

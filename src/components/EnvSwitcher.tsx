@@ -13,6 +13,7 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [showCopilotDevConsole, setShowCopilotDevConsole] = useState(false);
+  const [copilotKitRuntimeUrl, setCopilotKitRuntimeUrl] = useState('');
   const [position, setPosition] = useState({ x: 20, y: window.innerHeight - 150 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -28,9 +29,11 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
 
     setIsLocalEnv(apiConfigService.isUsingLocalApi());
     setShowCopilotDevConsole(devConfigService.getShowCopilotDevConsole());
+    setCopilotKitRuntimeUrl(devConfigService.getCopilotKitRuntimeUrl());
 
     const handleApiChange = () => {
       setIsLocalEnv(apiConfigService.isUsingLocalApi());
+      setCopilotKitRuntimeUrl(devConfigService.getCopilotKitRuntimeUrl());
     };
 
     const handleDevConfigChange = (config: any) => {
@@ -314,9 +317,12 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
             </div>
           </div>
 
-          <div className="pt-3 mt-3 border-t border-gray-100">
+          <div className="pt-3 mt-3 border-t border-gray-100 space-y-2">
             <div className="text-xs text-gray-500">
               当前API: <span className="font-mono">{apiConfigService.getApiBaseUrl()}</span>
+            </div>
+            <div className="text-xs text-gray-500">
+              CopilotKit Runtime: <span className="font-mono">{copilotKitRuntimeUrl}</span>
             </div>
           </div>
         </div>
