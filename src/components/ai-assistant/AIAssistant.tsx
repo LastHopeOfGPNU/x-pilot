@@ -1,20 +1,19 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Send, Zap, ChevronLeft, ChevronRight, Square, AlertCircle, Maximize2, Minimize2, Plus, User} from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { Send, Zap, ChevronLeft, ChevronRight, Square, AlertCircle, Maximize2, Minimize2, Plus, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 import StatusMessage from '../common/StatusMessage';
 import CapabilitySelector from './CapabilitySelector';
-import { useCopilotChatHeadless_c, useCopilotContext } from '@copilotkit/react-core';
+import {  useCopilotChatHeadless_c, useCopilotContext } from '@copilotkit/react-core';
 import { useAIAssistantActions } from './actions';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  Message, 
+import {
+  Message,
   AIAssistantProps
 } from '../../types';
-import { 
-  CAPABILITY_OPTIONS, 
-  generateThreadId,
-  generateMessageId 
+import {
+  CAPABILITY_OPTIONS,
+  generateMessageId
 } from '../../constants/aiAssistant';
 import {
   getUserDisplayName,
@@ -30,10 +29,10 @@ import {
 
 const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const { user } = useAuth();
-  
+
   // Get user display name - memoized to prevent unnecessary re-renders
   const userDisplayName = useMemo(() => getUserDisplayName(user), [user]);
-  
+
   const [inputValue, setInputValue] = useState('');
   const [isMinimized, setIsMinimized] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -41,46 +40,26 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const [showCapabilitySelector, setShowCapabilitySelector] = useState(false);
   const [selectedCapabilityIndex, setSelectedCapabilityIndex] = useState(0);
   const [selectorPosition, setSelectorPosition] = useState({ top: 0, left: 0 });
-  const [atTriggerPosition, setAtTriggerPosition] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [selectedCapability, setSelectedCapability] = useState<typeof CAPABILITY_OPTIONS[0] | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [threadId, setThreadId] = useState(() => generateThreadId());
   const [retryCount, setRetryCount] = useState(0);
   const [shouldStopRetry, setShouldStopRetry] = useState(false);
+  const [isSending, setIsSending] = useState(false); // 添加发送状态防止重复点击
   // CopilotKit integration - no need for manual retry logic
 
   // CopilotKit chat integration
   const { messages: copilotMessages, sendMessage, isLoading: copilotLoading, reset, stopGeneration } = useCopilotChatHeadless_c();
-  
+
+
   // CopilotKit context for thread management
   const { setThreadId: setCopilotThreadId } = useCopilotContext();
 
-  // AI Assistant Actions integration
-  const { agentStateRender } = useAIAssistantActions({
-    currentConversation: {
-      messages: copilotMessages,
-      threadId,
-      selectedCapability
-    },
-    selectedCapability: selectedCapability?.name || null,
-    setSelectedCapability: (capability) => {
-      const capabilityOption = CAPABILITY_OPTIONS.find(opt => opt.name === capability);
-      setSelectedCapability(capabilityOption || null);
-    },
-    onPlanGenerated: (plan) => {
-      console.log('Plan generated:', plan);
-      // 这里可以添加计划生成后的处理逻辑
-    },
-    onPlanStatusUpdated: (planId, status) => {
-      console.log('Plan status updated:', planId, status);
-      // 这里可以添加计划状态更新后的处理逻辑
-    }
-  });
+  // CopilotKit Actions
+  useAIAssistantActions();
 
 
-  
   // Notify parent component when expanded state changes
   useEffect(() => {
     onExpandedChange?.(isExpanded);
@@ -90,8 +69,6 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const selectorRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // ID生成函数已移至 ../constants/aiAssistant.ts
 
   // 处理容器焦点
   const handleContainerFocus = () => {
@@ -123,7 +100,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     setSelectedCapabilityIndex(findFirstEnabledCapabilityIndex());
     // 设置选择器位置在输入框上方
     setSelectorPosition({ top: -280, left: 0 });
-    
+
     // Focus the textarea
     setTimeout(() => {
       if (textareaRef.current) {
@@ -135,13 +112,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   // Handle input value changes and detect @ symbol
   const handleInputChange = (value: string) => {
     setInputValue(value);
-    
+
     const result = handleAtSymbolLogic(value);
-    
+
     if (result.shouldShowSelector) {
       setShowCapabilitySelector(true);
       setSelectedCapabilityIndex(findFirstEnabledCapabilityIndex());
-      setAtTriggerPosition(result.atPosition);
       setSelectorPosition({ top: -280, left: 0 });
     } else {
       setShowCapabilitySelector(false);
@@ -154,14 +130,14 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     if (capability.disabled) {
       return;
     }
-    
+
     // 设置选中的能力，显示在输入框上方
     setSelectedCapability(capability);
-    
+
     // 更新输入框内容，移除@符号
     const newValue = updateInputAfterCapabilitySelect(inputValue);
     setInputValue(newValue);
-    
+
     setShowCapabilitySelector(false);
   };
 
@@ -204,17 +180,14 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     }
   };
 
-
-
-  // 状态消息渲染逻辑已移至 StatusMessage 组件
-
   // 停止响应和重试
   const handleStopResponse = () => {
     if (isLoading || retryCount > 0) {
       setShouldStopRetry(true); // 设置停止重试标志
       setIsLoading(false);
       setRetryCount(0); // 重置重试计数
-      
+      setIsSending(false); // 重置发送状态
+
       // Add user stop message
       const stopMessage = createStatusMessage('Response stopped by user');
       setMessages(prev => [...prev, stopMessage]);
@@ -227,30 +200,35 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
         console.log('Stop generation completed');
       }
       
+      setIsSending(false); // 重置发送状态
+
       // Add user stop message for CopilotKit responses
       const stopMessage = createStatusMessage('Response stopped by user');
       setMessages(prev => [...prev, stopMessage]);
     }
   };
 
-  // CopilotKit handles all network communication and error handling
-
-  // Handle submit with retry mechanism
-  const handleSubmit = async (message?: string, currentRetryCount = 0) => {
+  // Handle submit with retry mechanism - 使用useCallback优化性能
+  const handleSubmit = useCallback(async (message?: string, currentRetryCount = 0) => {
     const messageToSend = message || inputValue.trim();
-    if (!messageToSend || (isLoading && currentRetryCount === 0) || copilotLoading) return;
+    if (!messageToSend || (isLoading && currentRetryCount === 0) || copilotLoading || isSending) return;
+    
+    // 防止重复发送
+    if (currentRetryCount === 0) {
+      setIsSending(true);
+    }
 
     // Reset error and retry states on first attempt
     if (currentRetryCount === 0) {
       setError(null);
       setRetryCount(0);
       setShouldStopRetry(false);
-      
+
       // Clear input and capability
       setInputValue('');
       setSelectedCapability(null);
     }
-    
+
     setIsLoading(true);
     setRetryCount(currentRetryCount);
 
@@ -261,56 +239,59 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
         role: 'user',
         content: messageToSend,
       });
-      
-      // Success - reset retry count
+
+      // Success - reset retry count and sending state
       setRetryCount(0);
-      
+      setIsSending(false);
+
     } catch (error) {
       console.error('Error sending message:', error);
-      
+
       // Check if we should retry (max 4 retries = 5 total attempts)
       if (currentRetryCount < 4 && !shouldStopRetry) {
         // Add retry status message to local messages
         const retryMessage = createStatusMessage(`Network retry (${currentRetryCount + 1}/5)...`);
         setMessages(prev => [...prev, retryMessage]);
-        
+
         // Update retry count
         setRetryCount(currentRetryCount + 1);
-        
+
         // Retry with exponential backoff
         setTimeout(() => {
           if (!shouldStopRetry) {
             handleSubmit(messageToSend, currentRetryCount + 1);
           }
         }, 1000 * (currentRetryCount + 1));
-        
+
         return;
       }
-      
+
       // Max retries reached or stopped - show error
       const errorMessage = createStatusMessage('Network connection failed, please check your network and try again');
       setMessages(prev => [...prev, errorMessage]);
       setError('Network connection failed, please check your network and try again');
-      
+      setIsSending(false); // 确保在错误情况下也重置发送状态
+
     } finally {
       if (currentRetryCount >= 4 || shouldStopRetry) {
         setIsLoading(false);
         setRetryCount(0);
+        setIsSending(false);
       }
     }
-  };
+  }, [inputValue, isLoading, copilotLoading, isSending, sendMessage, shouldStopRetry, retryCount]);
 
-  // 新增聊天窗口功能
+  // 新增聊天窗口调用
   const handleNewChat = () => {
     // 生成新的threadId
     const newThreadId = `thread-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+
     // 使用CopilotKit的setThreadId来切换到新会话
     setCopilotThreadId(newThreadId);
-    
+
     // Reset CopilotKit chat state
     reset();
-    
+
     // 清空当前消息
     setMessages([]);
     // 重置加载状态
@@ -320,12 +301,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     // 重置重试计数和停止标志
     setRetryCount(0);
     setShouldStopRetry(false);
+    // 重置发送状态
+    setIsSending(false);
     // 清空输入框
     setInputValue('');
     // 清除选中的能力
     setSelectedCapability(null);
-    // 更新本地threadId状态
-    setThreadId(newThreadId);
   };
 
   // 自动滚动到底部
@@ -365,7 +346,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   useEffect(() => {
     if (textareaRef.current) {
       const textarea = textareaRef.current;
-      
+
       // 使用requestAnimationFrame确保DOM更新完成后再调整高度
       requestAnimationFrame(() => {
         // 重置高度以获取正确的scrollHeight
@@ -419,20 +400,17 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     );
   };
 
-  // Capability selector 渲染逻辑已移至 CapabilitySelector 组件
-
   return (
-    <div 
+    <div
       ref={containerRef}
       tabIndex={0}
       onClick={handleContainerFocus}
       onFocus={handleContainerFocus}
       onBlur={handleContainerBlur}
-      className={`h-full flex flex-col bg-white border-l border-gray-200 transition-all duration-300 ease-in-out outline-none ${
-        isMinimized ? 'w-12' :
-        isExpanded ? 'w-[45vw] min-w-[600px] max-w-[900px]' : 
-        isFocused ? 'w-[30vw] min-w-[400px] max-w-[600px]' : 'w-[25vw] min-w-[320px] max-w-[500px]'
-      }`}
+      className={`h-full flex flex-col bg-white border-l border-gray-200 transition-all duration-300 ease-in-out outline-none ${isMinimized ? 'w-12' :
+        isExpanded ? 'w-[45vw] min-w-[600px] max-w-[900px]' :
+          isFocused ? 'w-[30vw] min-w-[400px] max-w-[600px]' : 'w-[25vw] min-w-[320px] max-w-[500px]'
+        }`}
     >
       {isMinimized ? (
         /* Minimized State - Only expand button in top right */
@@ -486,7 +464,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
               </button>
             </div>
           </div>
-      
+
           {allMessages.length === 0 ? (
             /* Empty State - Centered Input */
             <div className="flex flex-col flex-1 justify-center items-center p-8">
@@ -538,17 +516,17 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         }}
                       />
                       {/* Capability Selector */}
-          {showCapabilitySelector && (
-            <CapabilitySelector
-              ref={selectorRef}
-              options={CAPABILITY_OPTIONS}
-              selectedIndex={selectedCapabilityIndex}
-              position={selectorPosition}
-              onSelect={handleCapabilitySelect}
-            />
-          )}
+                      {showCapabilitySelector && (
+                        <CapabilitySelector
+                          ref={selectorRef}
+                          options={CAPABILITY_OPTIONS}
+                          selectedIndex={selectedCapabilityIndex}
+                          position={selectorPosition}
+                          onSelect={handleCapabilitySelect}
+                        />
+                      )}
                     </div>
-                    
+
                     {/* Action Bar - Capability selector and Send button in same row */}
                     <div className="pt-3 mt-3 border-t border-gray-100">
                       <div className="flex justify-between items-center space-x-3">
@@ -561,19 +539,23 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                           <span className="text-sm font-medium">@</span>
                           <span className="text-sm">Tools</span>
                         </button>
-                        
+
                         {/* Send Button */}
                         <button
                           onClick={() => {
                             if (isLoading || retryCount > 0 || copilotLoading) {
                               handleStopResponse();
-                            } else {
+                            } else if (!isSending) {
                               handleSubmit(inputValue);
                             }
                           }}
-                          disabled={!inputValue.trim() && !(isLoading || retryCount > 0) && !copilotLoading}
-                          className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-[#4792E6] hover:bg-[#3a7bc8] disabled:bg-gray-300 disabled:cursor-not-allowed text-white transition-all duration-200 shadow-sm hover:shadow-md disabled:shadow-none min-w-[80px] justify-center"
-                          title={isLoading || retryCount > 0 || copilotLoading ? "Stop" : "Send"}
+                          disabled={(!inputValue.trim() && !(isLoading || retryCount > 0) && !copilotLoading) || (isSending && !(isLoading || retryCount > 0 || copilotLoading))}
+                          className={`flex items-center space-x-2 px-4 py-2 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed text-white transition-all duration-200 shadow-sm hover:shadow-md disabled:shadow-none min-w-[80px] justify-center ${
+                            isLoading || retryCount > 0 || copilotLoading
+                              ? 'bg-red-600 hover:bg-red-700'
+                              : 'bg-[#4792E6] hover:bg-[#3a7bc8]'
+                          }`}
+                          title={isLoading || retryCount > 0 || copilotLoading ? "Stop" : isSending ? "Sending..." : "Send"}
                         >
                           {isLoading || retryCount > 0 || copilotLoading ? (
                             <Square size={16} />
@@ -581,7 +563,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                             <Send size={16} />
                           )}
                           <span className="text-sm font-medium">
-                            {isLoading || retryCount > 0 || copilotLoading ? "Stop" : "Send"}
+                            {isLoading || retryCount > 0 || copilotLoading ? "Stop" : isSending ? "Sending..." : "Send"}
                           </span>
                         </button>
                       </div>
@@ -613,21 +595,20 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                           </div>
                         )}
                       </div>
-                      
+
                       {/* 消息内容区域 */}
                       <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
                         {/* 昵称 */}
                         <div className="mb-1 text-xs text-gray-500">
                           {message.role === 'user' ? userDisplayName : 'X-Pilot'}
                         </div>
-                        
+
                         {/* 消息气泡 */}
                         <div
-                          className={`p-3 rounded-lg break-words whitespace-pre-wrap max-w-full overflow-wrap-anywhere ${
-                            message.role === 'user'
-                              ? 'bg-[#4792E6] text-white rounded-tr-sm'
-                              : 'bg-white text-black border border-gray-200 rounded-tl-sm'
-                          }`}
+                          className={`p-3 rounded-lg break-words whitespace-pre-wrap max-w-full overflow-wrap-anywhere ${message.role === 'user'
+                            ? 'bg-[#4792E6] text-white rounded-tr-sm'
+                            : 'bg-white text-black border border-gray-200 rounded-tl-sm'
+                            }`}
                           style={{
                             wordBreak: 'break-word',
                             overflowWrap: 'break-word',
@@ -646,6 +627,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                           ) : (
                             <div className="break-words">
                               <ReactMarkdown>{message.content}</ReactMarkdown>
+                              {/* {message.role === "assistant" && message.generativeUI?.()} */}
                             </div>
                           )}
                         </div>
@@ -653,38 +635,31 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                     </div>
                   </div>
                 ))}
-                
-                {/* Agent State Render - 显示AI生成的计划和执行步骤 */}
-                {agentStateRender.render && (
-                  <div className="mb-4">
-                    {agentStateRender.render}
-                  </div>
-                )}
 
                 {/* AI Loading Animation */}
                 {copilotLoading && (
                   <div className="flex justify-start mb-4">
                     <div className="flex items-start space-x-3 max-w-[80%]">
                       {/* AI头像 */}
-                       <div className="flex-shrink-0">
-                         <div className="flex overflow-hidden justify-center items-center w-8 h-8 bg-white rounded-full border border-gray-200">
-                           <img src="/xpilot-logo-fill-white.jpg" alt="X-Pilot" className="object-contain w-6 h-6" />
-                         </div>
-                       </div>
-                      
+                      <div className="flex-shrink-0">
+                        <div className="flex overflow-hidden justify-center items-center w-8 h-8 bg-white rounded-full border border-gray-200">
+                          <img src="/xpilot-logo-fill-white.jpg" alt="X-Pilot" className="object-contain w-6 h-6" />
+                        </div>
+                      </div>
+
                       {/* 加载内容区域 */}
                       <div className="flex flex-col items-start">
                         {/* 昵称 */}
                         <div className="mb-1 text-xs text-gray-500">
                           X Pilot
                         </div>
-                        
+
                         {/* 加载气泡 */}
                         <div className="p-3 bg-white rounded-lg rounded-tl-sm border border-gray-200">
                           <div className="flex items-center space-x-2">
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                             <span className="ml-2 text-sm text-gray-600">Thinking...</span>
                           </div>
                         </div>
@@ -692,7 +667,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                     </div>
                   </div>
                 )}
-                
+
                 <div ref={messagesEndRef} />
               </div>
 
@@ -705,12 +680,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                     <span className="text-sm text-red-700">{error}</span>
                   </div>
                 )}
-                
+
                 {/* CopilotKit handles network status */}
-                
+
                 {/* Selected Capability Display */}
                 {renderSelectedCapability()}
-                
+
                 <div className="relative">
                   {/* Text Input Area - Top */}
                   <div className="mb-3">
@@ -725,28 +700,28 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         onFocus={handleContainerFocus}
                         onBlur={handleInputBlur}
                         rows={1}
-                        style={{ 
-                          height: '40px', 
-                          minHeight: '40px', 
+                        style={{
+                          height: '40px',
+                          minHeight: '40px',
                           maxHeight: '128px',
                           whiteSpace: 'pre-wrap',
                           wordWrap: 'break-word'
                         }}
                       />
-                      
+
                       {/* Capability Selector Popup */}
-        {showCapabilitySelector && (
-          <CapabilitySelector
-            ref={selectorRef}
-            options={CAPABILITY_OPTIONS}
-            selectedIndex={selectedCapabilityIndex}
-            position={selectorPosition}
-            onSelect={handleCapabilitySelect}
-          />
-        )}
+                      {showCapabilitySelector && (
+                        <CapabilitySelector
+                          ref={selectorRef}
+                          options={CAPABILITY_OPTIONS}
+                          selectedIndex={selectedCapabilityIndex}
+                          position={selectorPosition}
+                          onSelect={handleCapabilitySelect}
+                        />
+                      )}
                     </div>
                   </div>
-                  
+
                   {/* Action Bar - Capability selector and Send button in same row - Bottom */}
                   <div className="flex justify-between items-center space-x-3">
                     {/* Capability Selection Button */}
@@ -758,31 +733,31 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                       <span className="text-sm font-medium">@</span>
                       <span className="text-sm">Select Capability</span>
                     </button>
-                    
+
                     {/* Send Button */}
                     <button
                       onClick={() => {
-                        if (copilotLoading) {
+                        if (isLoading || retryCount > 0 || copilotLoading) {
                           handleStopResponse();
-                        } else {
+                        } else if (!isSending) {
                           handleSubmit(inputValue);
                         }
                       }}
-                      disabled={!inputValue.trim() && !copilotLoading}
+                      disabled={(!inputValue.trim() && !(isLoading || retryCount > 0) && !copilotLoading) || (isSending && !(isLoading || retryCount > 0 || copilotLoading))}
                       className={`flex items-center space-x-2 px-4 py-2 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed text-white transition-all duration-200 shadow-sm hover:shadow-md disabled:shadow-none min-w-[80px] justify-center ${
-                        copilotLoading 
-                          ? 'bg-red-500 hover:bg-red-600' 
+                        isLoading || retryCount > 0 || copilotLoading
+                          ? 'bg-red-600 hover:bg-red-700'
                           : 'bg-[#4792E6] hover:bg-[#3a7bc8]'
                       }`}
-                      title={copilotLoading ? "Stop" : "Send"}
+                      title={isLoading || retryCount > 0 || copilotLoading ? "Stop" : isSending ? "Sending..." : "Send"}
                     >
-                      {copilotLoading ? (
+                      {isLoading || retryCount > 0 || copilotLoading ? (
                         <Square size={16} />
                       ) : (
                         <Send size={16} />
                       )}
                       <span className="text-sm font-medium">
-                        {copilotLoading ? "Stop" : "Send"}
+                        {isLoading || retryCount > 0 || copilotLoading ? "Stop" : isSending ? "Sending..." : "Send"}
                       </span>
                     </button>
                   </div>
