@@ -209,58 +209,34 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   useLangGraphInterrupt({
     enabled: (event) => {
       console.log('AIAssistant interrupt event:', event);
-      return event?.type === 'check_steps';
+      return event?.eventValue?.type === 'check_steps';
     },
     render: ({ event, resolve }) => {
       console.log('AIAssistant rendering check_steps interrupt:', event);
       
-      const planSteps = event?.content || [];
+      const planContent = event?.eventValue?.content || [];
+      
+      // Convert plan content to PlanStep format
+      const planSteps = planContent.map((step: string, index: number) => ({
+        id: `step-${index}`,
+        stepNumber: index + 1,
+        title: step,
+        description: `执行步骤 ${index + 1}`,
+        estimatedTime: '预计 5-10 分钟',
+        priority: 'medium' as const,
+        status: 'pending' as const
+      }));
       
       return (
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2">
-              <Zap className="w-5 h-5 text-blue-500" />
-              <h3 className="font-semibold text-gray-900">Agent Plan Approval</h3>
-            </div>
-            <div className="flex items-center space-x-1">
-              <AlertCircle className="w-4 h-4 text-orange-400" />
-              <span className="text-sm text-orange-600">Waiting for approval</span>
-            </div>
-          </div>
-          
-          <p className="text-sm text-gray-600 mb-3">
-            The agent has created a plan with the following steps. Please review and approve or cancel:
-          </p>
-          
-          <div className="space-y-2 mb-4">
-            {planSteps.map((step: string, index: number) => (
-              <div key={index} className="flex items-start space-x-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
-                <div className="flex-shrink-0 w-7 h-7 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
-                  {index + 1}
-                </div>
-                <p className="text-sm text-gray-800 flex-1 font-medium">{step}</p>
-              </div>
-            ))}
-          </div>
-          
-          <div className="flex space-x-3">
-            <button
-              onClick={() => resolve({ code: 'CANCEL' })}
-              className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 border border-gray-200"
-            >
-              <XCircle className="w-4 h-4" />
-              <span>Cancel Plan</span>
-            </button>
-            <button
-              onClick={() => resolve({ code: 'APPROVE' })}
-              className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-sm"
-            >
-              <CheckCircle className="w-4 h-4" />
-              <span>Approve & Execute</span>
-            </button>
-          </div>
-        </div>
+        <PlanGenerationCard
+          title="AI 代理计划审批"
+          description="AI 代理已创建以下执行计划，请审核并选择是否执行。"
+          steps={planSteps}
+          status="ready"
+          onConfirmPlan={() => resolve({ code: 'APPROVE' })}
+          onCancelPlan={() => resolve({ code: 'CANCEL' })}
+          className="mb-4"
+        />
       );
     }
   });
@@ -351,8 +327,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
         setSelectedCapabilityIndex(firstEnabledIndex !== -1 ? firstEnabledIndex : 0);
         setAtTriggerPosition(lastAtIndex);
         
-        // 设置选择器位置在输入框下方
-        setSelectorPosition({ top: 50, left: 0 });
+        // 设置选择器位置在输入框上方，与按钮点击保持一致
+        setSelectorPosition({ top: -280, left: 0 });
         
         // If there's text after @, filter options
         if (textAfterAt.length > 0) {
@@ -1106,6 +1082,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                   </div>
                 )}
                 
+
                 {/* AI Loading Animation */}
                 {copilotLoading && (
                   <div className="flex justify-start mb-4">
