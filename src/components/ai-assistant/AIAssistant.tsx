@@ -1,24 +1,18 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Send, Zap, ChevronLeft, ChevronRight, Square, AlertCircle, Maximize2, Minimize2, Plus, User} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import PlanGenerationCard from '../common/PlanGenerationCard';
-import SimplePlanCard from '../common/SimplePlanCard';
-import ExecutionStepsCard from '../common/ExecutionStepsCard';
+
 import StatusMessage from '../common/StatusMessage';
 import CapabilitySelector from './CapabilitySelector';
-import { useCopilotChatHeadless_c, useCopilotAction, useCopilotReadable, useCopilotContext, useCoAgentStateRender } from '@copilotkit/react-core';
+import { useCopilotChatHeadless_c, useCopilotContext } from '@copilotkit/react-core';
+import { useAIAssistantActions } from './actions';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   Message, 
-  PlanData, 
-  AIAssistantProps, 
-  AgentState
+  AIAssistantProps
 } from '../../types';
-import { CapabilityOption, SelectorPosition } from './types';
 import { 
   CAPABILITY_OPTIONS, 
-  RETRY_CONFIG, 
-  SELECTOR_CONFIG,
   generateThreadId,
   generateMessageId 
 } from '../../constants/aiAssistant';
@@ -29,7 +23,6 @@ import {
   updateInputAfterCapabilitySelect,
   getNextCapabilityIndex,
   createStatusMessage,
-  calculateRetryDelay
 } from '../../utils/aiAssistantUtils';
 
 // 类型定义已移至 ../types/aiAssistant.ts
@@ -57,9 +50,6 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const [retryCount, setRetryCount] = useState(0);
   const [shouldStopRetry, setShouldStopRetry] = useState(false);
   // CopilotKit integration - no need for manual retry logic
-  const [currentPlan, setCurrentPlan] = useState<PlanData | null>(null);
-  const [planGenerationBuffer, setPlanGenerationBuffer] = useState<string>('');
-  // 移除simplePlan和executionSteps状态，改用useCoAgentStateRender
 
   // CopilotKit chat integration
   const { messages: copilotMessages, sendMessage, isLoading: copilotLoading, reset, stopGeneration } = useCopilotChatHeadless_c();
@@ -67,133 +57,29 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   // CopilotKit context for thread management
   const { setThreadId: setCopilotThreadId } = useCopilotContext();
 
-  // CopilotKit Integration
-  useCopilotReadable({
-    description: "Current conversation messages and context",
-    value: {
-      messages,
-      currentPlan,
-      selectedCapability,
-      threadId
-    }
-  });
-
-  useCopilotAction({
-    name: "generatePlan",
-    description: "Generate a detailed plan based on user requirements",
-    parameters: [
-      {
-        name: "title",
-        type: "string",
-        description: "The title of the plan"
-      },
-      {
-        name: "description",
-        type: "string",
-        description: "Description of what the plan will accomplish"
-      },
-      {
-        name: "steps",
-        type: "object[]",
-        description: "Array of plan steps with details"
-      }
-    ],
-    handler: async ({ title, description, steps }) => {
-      const newPlan: PlanData = {
-        id: generateMessageId(),
-        title,
-        description,
-        steps: steps.map((step: any, index: number) => ({
-          id: generateMessageId(),
-          stepNumber: index + 1,
-          title: step.title || `Step ${index + 1}`,
-          description: step.description || '',
-          priority: step.priority || 'medium',
-          status: 'pending'
-        })),
-        status: 'ready',
-        progress: 0
-      };
-      setCurrentPlan(newPlan);
-      return `Plan "${title}" has been generated with ${steps.length} steps.`;
-    }
-  });
-
-  useCopilotAction({
-    name: "updatePlanStatus",
-    description: "Update the status of the current plan",
-    parameters: [
-      {
-        name: "status",
-        type: "string",
-        description: "New status for the plan (ready, confirmed, executing, completed)"
-      }
-    ],
-    handler: async ({ status }) => {
-      if (currentPlan) {
-        setCurrentPlan({ ...currentPlan, status: status as any });
-        return `Plan status updated to ${status}`;
-      }
-      return "No active plan to update";
-    }
-  });
-
-  useCopilotAction({
-    name: "setSelectedCapability",
-    description: "Set the selected capability for the conversation",
-    parameters: [
-      {
-        name: "capability",
-        type: "string",
-        description: "The capability to select (post, thread, strategy, reply)"
-      }
-    ],
-    handler: async ({ capability }) => {
-      const option = CAPABILITY_OPTIONS.find(opt => opt.id === capability);
-      if (option && !option.disabled) {
-        setSelectedCapability(option);
-        return `Selected capability: ${option.label}`;
-      }
-      return `Capability ${capability} not found or disabled`;
-    }
-  });
-  
-  // 使用useCoAgentStateRender来渲染Agent状态
-  const agentStateRender = useCoAgentStateRender<AgentState>({
-    name: "xpilot_agent", // Agent名称，需要与后端LangGraph中的名称匹配
-    render: ({ state }) => {
-      console.log('Agent state render:', state);
-      
-      return (
-        <div className="space-y-4">
-          {/* 渲染计划步骤 */}
-          {state.plan_steps && state.plan_steps.length > 0 && (
-            <div className="flex justify-start mb-4">
-              <div className="max-w-[80%]">
-                <SimplePlanCard
-                  steps={state.plan_steps.map(step => step.title)}
-                  onExecute={() => console.log('Plan executed')}
-                  onCancel={() => console.log('Plan cancelled')}
-                />
-              </div>
-            </div>
-          )}
-          
-          {/* 渲染执行步骤 */}
-          {state.execution_steps && state.execution_steps.length > 0 && (
-            <div className="flex justify-start mb-4">
-              <div className="max-w-[80%]">
-                <ExecutionStepsCard
-                  steps={state.execution_steps}
-                  title="执行进度"
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      );
+  // AI Assistant Actions integration
+  const { agentStateRender } = useAIAssistantActions({
+    currentConversation: {
+      messages: copilotMessages,
+      threadId,
+      selectedCapability
     },
+    selectedCapability: selectedCapability?.name || null,
+    setSelectedCapability: (capability) => {
+      const capabilityOption = CAPABILITY_OPTIONS.find(opt => opt.name === capability);
+      setSelectedCapability(capabilityOption || null);
+    },
+    onPlanGenerated: (plan) => {
+      console.log('Plan generated:', plan);
+      // 这里可以添加计划生成后的处理逻辑
+    },
+    onPlanStatusUpdated: (planId, status) => {
+      console.log('Plan status updated:', planId, status);
+      // 这里可以添加计划状态更新后的处理逻辑
+    }
   });
+
+
   
   // Notify parent component when expanded state changes
   useEffect(() => {
@@ -318,40 +204,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     }
   };
 
-  // Plan management functions
-  const handlePlanConfirm = () => {
-    if (currentPlan) {
-      setCurrentPlan({ ...currentPlan, status: 'confirmed' });
-    }
-  };
 
-  const handlePlanExecute = () => {
-    if (currentPlan) {
-      setCurrentPlan({ ...currentPlan, status: 'executing' });
-      // Simulate execution progress
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 10;
-        if (currentPlan) {
-          setCurrentPlan(prev => prev ? { ...prev, progress } : null);
-        }
-        if (progress >= 100) {
-          clearInterval(interval);
-          setCurrentPlan(prev => prev ? { ...prev, status: 'completed' } : null);
-        }
-      }, 500);
-    }
-  };
-
-  const handlePlanCancel = () => {
-    setCurrentPlan(null);
-  };
-
-  const handlePlanEdit = () => {
-    if (currentPlan) {
-      setCurrentPlan({ ...currentPlan, status: 'ready' });
-    }
-  };
 
   // 状态消息渲染逻辑已移至 StatusMessage 组件
 
@@ -471,9 +324,6 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     setInputValue('');
     // 清除选中的能力
     setSelectedCapability(null);
-    // 清除计划相关状态
-    setCurrentPlan(null);
-    setPlanGenerationBuffer('');
     // 更新本地threadId状态
     setThreadId(newThreadId);
   };
@@ -804,24 +654,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                   </div>
                 ))}
                 
-                {/* Plan Components */}
-                {currentPlan && (
-                  <div className="flex justify-start mb-4">
-                    <div className="max-w-[80%]">
-                      <PlanGenerationCard
-                        plan={currentPlan}
-                        onConfirm={handlePlanConfirm}
-                        onExecute={handlePlanExecute}
-                        onCancel={handlePlanCancel}
-                        onEdit={handlePlanEdit}
-                      />
-                    </div>
+                {/* Agent State Render - 显示AI生成的计划和执行步骤 */}
+                {agentStateRender.render && (
+                  <div className="mb-4">
+                    {agentStateRender.render}
                   </div>
                 )}
-                
-                {/* Agent State Render - 替代原有的SimplePlanCard和ExecutionStepsCard */}
-                {agentStateRender}
-                
 
                 {/* AI Loading Animation */}
                 {copilotLoading && (
