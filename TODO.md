@@ -23,3 +23,4 @@
 - [x] engaggement queue 最大宽度仅仅时卡片宽度
 - [ ] 联调完engagement后，需要检查dashboard的activity
 - [ ] 点击fullscreen后，不受点击失焦得影响
+- [ ] 现在按照左侧菜单的模块划分，将各个组件都像ai chat整理成各个独立的目录，但要保证UI/UX不改变

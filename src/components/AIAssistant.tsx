@@ -4,95 +4,43 @@ import ReactMarkdown from 'react-markdown';
 import PlanGenerationCard from './PlanGenerationCard';
 import SimplePlanCard from './SimplePlanCard';
 import ExecutionStepsCard from './ExecutionStepsCard';
+import StatusMessage from './StatusMessage';
+import CapabilitySelector from './CapabilitySelector';
 import { useCopilotChatHeadless_c, useCopilotAction, useCopilotReadable, useCopilotContext, useCoAgentStateRender } from '@copilotkit/react-core';
 import { useAuth } from '../contexts/AuthContext';
+import { 
+  Message, 
+  PlanData, 
+  AIAssistantProps, 
+  AgentState, 
+  CapabilityOption,
+  SelectorPosition 
+} from '../types';
+import { 
+  CAPABILITY_OPTIONS, 
+  RETRY_CONFIG, 
+  SELECTOR_CONFIG,
+  generateThreadId,
+  generateMessageId 
+} from '../constants/aiAssistant';
+import {
+  getUserDisplayName,
+  findFirstEnabledCapabilityIndex,
+  handleAtSymbolLogic,
+  updateInputAfterCapabilitySelect,
+  getNextCapabilityIndex,
+  createStatusMessage,
+  calculateRetryDelay
+} from '../utils/aiAssistantUtils';
 
-// 定义消息类型
-interface Message {
-  id: string;
-  content: string;
-  role: 'user' | 'assistant';
-  timestamp?: string;
-  planData?: PlanData;
-}
-
-// 定义计划数据类型
-interface PlanData {
-  id: string;
-  title: string;
-  description?: string;
-  steps: PlanStep[];
-  markdownContent?: string;
-  mermaidDiagram?: string;
-  status: 'generating' | 'ready' | 'confirmed' | 'executing' | 'completed';
-  progress?: number;
-}
-
-interface PlanStep {
-  id: string;
-  stepNumber: number;
-  title: string;
-  description: string;
-  estimatedTime?: string;
-  priority?: 'high' | 'medium' | 'low';
-  status?: 'pending' | 'in-progress' | 'completed' | 'blocked';
-}
-
-interface AIAssistantProps {
-  onExpandedChange?: (expanded: boolean) => void;
-}
-
-// 定义后端请求结构
-interface BackendRequest {
-  state: any[];
-  tools: any[];
-  context: any[];
-  forwardedProps: Record<string, any>;
-  messages: Array<{
-    content: string;
-    role: string;
-    id: string;
-  }>;
-  runId: string;
-  threadId: string;
-}
-
-// 定义Agent状态类型，匹配LangGraph中的状态
-type AgentState = {
-  execution_steps?: {
-    step: string;
-    status: 'pending' | 'running' | 'completed' | 'failed';
-    description: string;
-    details?: string;
-  }[];
-  plan_steps?: {
-    title: string;
-    description: string;
-    status: 'pending' | 'approved' | 'rejected';
-  }[];
-};
-
-// Capability selector options
-const CAPABILITY_OPTIONS = [
-  { id: 'post', label: '@post', description: 'Vibe Generation Post', disabled: true },
-  { id: 'thread', label: '@thread', description: 'Vibe Generation Thread', disabled: true },
-  { id: 'strategy', label: '@strategy', description: 'Vibe Operation Strategy', disabled: true },
-  { id: 'reply', label: '@reply', description: 'Vibe Auto Reply', disabled: false }
-];
+// 类型定义已移至 ../types/aiAssistant.ts
+// 常量定义已移至 ../constants/aiAssistant.ts
 
 const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const { user } = useAuth();
   
   // Get user display name - memoized to prevent unnecessary re-renders
-  const userDisplayName = useMemo(() => {
-    if (user?.user_metadata?.full_name) {
-      return user.user_metadata.full_name;
-    }
-    if (user?.email) {
-      return user.email.split('@')[0];
-    }
-    return 'You';
-  }, [user?.user_metadata?.full_name, user?.email]);
+  const userDisplayName = useMemo(() => getUserDisplayName(user), [user]);
   
   const [inputValue, setInputValue] = useState('');
   const [isMinimized, setIsMinimized] = useState(false);
@@ -106,7 +54,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const [selectedCapability, setSelectedCapability] = useState<typeof CAPABILITY_OPTIONS[0] | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [threadId, setThreadId] = useState(() => `thread-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+  const [threadId, setThreadId] = useState(() => generateThreadId());
   const [retryCount, setRetryCount] = useState(0);
   const [shouldStopRetry, setShouldStopRetry] = useState(false);
   // CopilotKit integration - no need for manual retry logic
@@ -153,11 +101,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     ],
     handler: async ({ title, description, steps }) => {
       const newPlan: PlanData = {
-        id: generateId(),
+        id: generateMessageId(),
         title,
         description,
         steps: steps.map((step: any, index: number) => ({
-          id: generateId(),
+          id: generateMessageId(),
           stepNumber: index + 1,
           title: step.title || `Step ${index + 1}`,
           description: step.description || '',
@@ -202,7 +150,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       }
     ],
     handler: async ({ capability }) => {
-      const option = CAPABILITY_OPTIONS.find(opt => opt.value === capability);
+      const option = CAPABILITY_OPTIONS.find(opt => opt.id === capability);
       if (option && !option.disabled) {
         setSelectedCapability(option);
         return `Selected capability: ${option.label}`;
@@ -258,8 +206,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 生成唯一ID
-  const generateId = () => `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  // ID生成函数已移至 ../constants/aiAssistant.ts
 
   // 处理容器焦点
   const handleContainerFocus = () => {
@@ -288,8 +235,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     // 直接显示选择器，不在输入框中添加@符号
     setShowCapabilitySelector(true);
     // 找到第一个未禁用的选项
-    const firstEnabledIndex = CAPABILITY_OPTIONS.findIndex(option => !option.disabled);
-    setSelectedCapabilityIndex(firstEnabledIndex !== -1 ? firstEnabledIndex : 0);
+    setSelectedCapabilityIndex(findFirstEnabledCapabilityIndex(CAPABILITY_OPTIONS));
     // 设置选择器位置在输入框上方
     setSelectorPosition({ top: -280, left: 0 });
     
@@ -305,39 +251,14 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const handleInputChange = (value: string) => {
     setInputValue(value);
     
-    const lastAtIndex = value.lastIndexOf('@');
+    const result = handleAtSymbolLogic(value, CAPABILITY_OPTIONS);
     
-    if (lastAtIndex !== -1) {
-      // Get text after the last @
-      const textAfterAt = value.substring(lastAtIndex + 1);
-      
-      // Check if there's a space or newline after @, which should close the selector
-      if (textAfterAt.includes(' ') || textAfterAt.includes('\n')) {
-        setShowCapabilitySelector(false);
-      } else {
-        // Show selector when @ is present and no space/newline after it
-        setShowCapabilitySelector(true);
-        // 找到第一个未禁用的选项
-        const firstEnabledIndex = CAPABILITY_OPTIONS.findIndex(option => !option.disabled);
-        setSelectedCapabilityIndex(firstEnabledIndex !== -1 ? firstEnabledIndex : 0);
-        setAtTriggerPosition(lastAtIndex);
-        
-        // 设置选择器位置在输入框上方，与按钮点击保持一致
-        setSelectorPosition({ top: -280, left: 0 });
-        
-        // If there's text after @, filter options
-        if (textAfterAt.length > 0) {
-          const filteredOptions = CAPABILITY_OPTIONS.filter(option =>
-            option.label.toLowerCase().includes(textAfterAt.toLowerCase())
-          );
-          // Only show selector if there are matching options
-          if (filteredOptions.length === 0) {
-            setShowCapabilitySelector(false);
-          }
-        }
-      }
+    if (result.shouldShow) {
+      setShowCapabilitySelector(true);
+      setSelectedCapabilityIndex(findFirstEnabledCapabilityIndex(CAPABILITY_OPTIONS));
+      setAtTriggerPosition(result.atIndex!);
+      setSelectorPosition({ top: -280, left: 0 });
     } else {
-      // No @ symbol found, hide selector
       setShowCapabilitySelector(false);
     }
   };
@@ -352,24 +273,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     // 设置选中的能力，显示在输入框上方
     setSelectedCapability(capability);
     
-    // 如果输入框中有@符号，则删除它
-    const lastAtIndex = inputValue.lastIndexOf('@');
-    if (lastAtIndex !== -1) {
-      const beforeAt = inputValue.substring(0, lastAtIndex);
-      const afterAt = inputValue.substring(lastAtIndex + 1);
-      
-      // 找到@后面单词的结束位置
-      const spaceIndex = afterAt.indexOf(' ');
-      const newlineIndex = afterAt.indexOf('\n');
-      let endIndex = afterAt.length;
-      
-      if (spaceIndex !== -1) endIndex = Math.min(endIndex, spaceIndex);
-      if (newlineIndex !== -1) endIndex = Math.min(endIndex, newlineIndex);
-      
-      const afterWord = afterAt.substring(endIndex);
-      const newValue = beforeAt + afterWord;
-      setInputValue(newValue);
-    }
+    // 更新输入框内容，移除@符号
+    const newValue = updateInputAfterCapabilitySelect(inputValue);
+    setInputValue(newValue);
     
     setShowCapabilitySelector(false);
   };
@@ -381,23 +287,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault();
-          setSelectedCapabilityIndex(prev => {
-            let newIndex = prev;
-            do {
-              newIndex = newIndex > 0 ? newIndex - 1 : CAPABILITY_OPTIONS.length - 1;
-            } while (CAPABILITY_OPTIONS[newIndex].disabled && newIndex !== prev);
-            return newIndex;
-          });
+          setSelectedCapabilityIndex(prev => getNextCapabilityIndex(CAPABILITY_OPTIONS, prev, 'up'));
           return;
         case 'ArrowDown':
           e.preventDefault();
-          setSelectedCapabilityIndex(prev => {
-            let newIndex = prev;
-            do {
-              newIndex = newIndex < CAPABILITY_OPTIONS.length - 1 ? newIndex + 1 : 0;
-            } while (CAPABILITY_OPTIONS[newIndex].disabled && newIndex !== prev);
-            return newIndex;
-          });
+          setSelectedCapabilityIndex(prev => getNextCapabilityIndex(CAPABILITY_OPTIONS, prev, 'down'));
           return;
         case 'Enter':
           e.preventDefault();
@@ -460,51 +354,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     }
   };
 
-  // 渲染状态消息（网络重试、错误和用户停止）
-  const renderStatusMessage = (content: string) => {
-    const isNetworkError = content.includes('Network connection failed') || content.includes('网络异常');
-    const isRetrying = content.includes('Network retry');
-    const isUserStopped = content.includes('Response stopped by user') || content.includes('用户中止响应');
-    
-    if (isNetworkError) {
-      return (
-        <div className="flex justify-center mb-4">
-          <div className="flex items-center p-3 space-x-2 max-w-md bg-red-50 rounded-lg border border-red-200">
-            <AlertCircle size={16} className="flex-shrink-0 text-red-500" />
-            <span className="text-sm font-medium text-red-700">{content}</span>
-          </div>
-        </div>
-      );
-    }
-    
-    if (isRetrying) {
-      return (
-        <div className="flex justify-center mb-4">
-          <div className="flex items-center p-3 space-x-2 max-w-md bg-blue-50 rounded-lg border border-blue-200">
-            <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-            </div>
-            <span className="text-sm font-medium text-blue-700">{content}</span>
-          </div>
-        </div>
-      );
-    }
-    
-    if (isUserStopped) {
-      return (
-        <div className="flex justify-center mb-4">
-          <div className="flex items-center p-3 space-x-2 max-w-md bg-orange-50 rounded-lg border border-orange-200">
-            <Square size={16} className="flex-shrink-0 text-orange-500" />
-            <span className="text-sm font-medium text-orange-700">{content}</span>
-          </div>
-        </div>
-      );
-    }
-    
-    return null;
-  };
+  // 状态消息渲染逻辑已移至 StatusMessage 组件
 
   // 停止响应和重试
   const handleStopResponse = () => {
@@ -514,12 +364,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       setRetryCount(0); // 重置重试计数
       
       // Add user stop message
-      const stopMessage: Message = {
-        id: generateId(),
-        content: 'Response stopped by user',
-        role: 'assistant',
-        timestamp: new Date().toISOString()
-      };
+      const stopMessage = createStatusMessage('Response stopped by user');
       setMessages(prev => [...prev, stopMessage]);
     }
     if (copilotLoading) {
@@ -531,12 +376,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       }
       
       // Add user stop message for CopilotKit responses
-      const stopMessage: Message = {
-        id: generateId(),
-        content: 'Response stopped by user',
-        role: 'assistant',
-        timestamp: new Date().toISOString()
-      };
+      const stopMessage = createStatusMessage('Response stopped by user');
       setMessages(prev => [...prev, stopMessage]);
     }
   };
@@ -565,7 +405,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     try {
       // Send message to CopilotKit
       await sendMessage({
-        id: generateId(),
+        id: generateMessageId(),
         role: 'user',
         content: messageToSend,
       });
@@ -579,12 +419,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       // Check if we should retry (max 4 retries = 5 total attempts)
       if (currentRetryCount < 4 && !shouldStopRetry) {
         // Add retry status message to local messages
-        const retryMessage: Message = {
-          id: generateId(),
-          content: `Network retry (${currentRetryCount + 1}/5)...`,
-          role: 'assistant',
-          timestamp: new Date().toISOString()
-        };
+        const retryMessage = createStatusMessage(`Network retry (${currentRetryCount + 1}/5)...`);
         setMessages(prev => [...prev, retryMessage]);
         
         // Update retry count
@@ -601,12 +436,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       }
       
       // Max retries reached or stopped - show error
-      const errorMessage: Message = {
-        id: generateId(),
-        content: 'Network connection failed, please check your network and try again',
-        role: 'assistant',
-        timestamp: new Date().toISOString()
-      };
+      const errorMessage = createStatusMessage('Network connection failed, please check your network and try again');
       setMessages(prev => [...prev, errorMessage]);
       setError('Network connection failed, please check your network and try again');
       
@@ -645,8 +475,6 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     // 清除计划相关状态
     setCurrentPlan(null);
     setPlanGenerationBuffer('');
-    setSimplePlan(null);
-    setExecutionSteps(null);
     // 更新本地threadId状态
     setThreadId(newThreadId);
   };
@@ -664,7 +492,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
         // 处理CopilotKit headless消息格式
         const isUser = msg.role === 'user';
         return {
-          id: msg.id || generateId(),
+          id: msg.id || generateMessageId(),
           role: isUser ? 'user' : 'assistant',
           content: msg.content || '',
           timestamp: msg.timestamp || new Date().toISOString()
@@ -742,61 +570,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     );
   };
 
-  // Render capability selector with enhanced UI and keyboard navigation
-  const renderCapabilitySelector = () => {
-    if (!showCapabilitySelector) return null;
-
-    return (
-      <div
-        ref={selectorRef}
-        className="absolute z-50 bg-white border border-gray-200 rounded-lg shadow-xl py-2 min-w-[280px] backdrop-blur-sm"
-        style={{
-          top: selectorPosition.top,
-          left: selectorPosition.left,
-          animation: 'fadeInUp 0.15s ease-out'
-        }}
-      >
-        <div className="px-3 py-2 text-xs font-medium text-gray-500 border-b border-gray-100">
-          Select Capability
-        </div>
-        {CAPABILITY_OPTIONS.map((option, index) => (
-          <button
-            key={option.id}
-            onClick={() => handleCapabilitySelect(option)}
-            disabled={option.disabled}
-            className={`flex items-center justify-between px-4 py-3 w-full text-left transition-all duration-150 ${
-              option.disabled
-                ? 'opacity-50 cursor-not-allowed bg-gray-50'
-                : index === selectedCapabilityIndex
-                ? 'bg-blue-50 border-l-2 border-[#4792E6]'
-                : 'hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center space-x-3">
-              <span className={`font-medium ${
-                option.disabled
-                  ? 'text-gray-400'
-                  : index === selectedCapabilityIndex ? 'text-[#4792E6]' : 'text-[#4792E6]'
-              }`}>
-                {option.label}
-              </span>
-              <span className={`text-sm ${
-                option.disabled ? 'text-gray-400' : 'text-gray-600'
-              }`}>{option.description}</span>
-            </div>
-            {index === selectedCapabilityIndex && !option.disabled && (
-              <div className="flex items-center space-x-1 text-xs text-gray-400">
-                <span>↵</span>
-              </div>
-            )}
-          </button>
-        ))}
-        <div className="px-3 py-2 text-xs text-gray-400 border-t border-gray-100">
-          ↑↓ Navigate • ↵ Select • Esc Cancel
-        </div>
-      </div>
-    );
-  };
+  // Capability selector 渲染逻辑已移至 CapabilitySelector 组件
 
   return (
     <div 
@@ -915,7 +689,15 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         }}
                       />
                       {/* Capability Selector */}
-                      {renderCapabilitySelector()}
+          {showCapabilitySelector && (
+            <CapabilitySelector
+              ref={selectorRef}
+              options={CAPABILITY_OPTIONS}
+              selectedIndex={selectedCapabilityIndex}
+              position={selectorPosition}
+              onSelect={handleCapabilitySelect}
+            />
+          )}
                     </div>
                     
                     {/* Action Bar - Capability selector and Send button in same row */}
@@ -1011,7 +793,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                             message.content.includes('Response stopped by user') ||
                             message.content.includes('用户中止响应')
                           ) ? (
-                            renderStatusMessage(message.content)
+                            <StatusMessage content={message.content} />
                           ) : (
                             <div className="break-words">
                               <ReactMarkdown>{message.content}</ReactMarkdown>
@@ -1116,7 +898,15 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                       />
                       
                       {/* Capability Selector Popup */}
-                      {renderCapabilitySelector()}
+        {showCapabilitySelector && (
+          <CapabilitySelector
+            ref={selectorRef}
+            options={CAPABILITY_OPTIONS}
+            selectedIndex={selectedCapabilityIndex}
+            position={selectorPosition}
+            onSelect={handleCapabilitySelect}
+          />
+        )}
                     </div>
                   </div>
                   

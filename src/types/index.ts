@@ -100,3 +100,6 @@ export interface Post {
 
 export type CardType = Card['type'];
 export type Priority = Metadata['priority'];
+
+// Re-export AI Assistant types
+export * from './aiAssistant';
