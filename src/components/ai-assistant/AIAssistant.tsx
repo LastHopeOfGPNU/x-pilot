@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Send, Zap, ChevronLeft, ChevronRight, Square, AlertCircle, Maximize2, Minimize2, Plus, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
@@ -46,6 +46,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [shouldStopRetry, setShouldStopRetry] = useState(false);
+  const [isSending, setIsSending] = useState(false); // 添加发送状态防止重复点击
   // CopilotKit integration - no need for manual retry logic
 
   // CopilotKit chat integration
@@ -185,6 +186,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       setShouldStopRetry(true); // 设置停止重试标志
       setIsLoading(false);
       setRetryCount(0); // 重置重试计数
+      setIsSending(false); // 重置发送状态
 
       // Add user stop message
       const stopMessage = createStatusMessage('Response stopped by user');
@@ -197,6 +199,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
         // 忽略停止生成时的错误，这是正常的用户操作
         console.log('Stop generation completed');
       }
+      
+      setIsSending(false); // 重置发送状态
 
       // Add user stop message for CopilotKit responses
       const stopMessage = createStatusMessage('Response stopped by user');
@@ -204,10 +208,15 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     }
   };
 
-  // Handle submit with retry mechanism
-  const handleSubmit = async (message?: string, currentRetryCount = 0) => {
+  // Handle submit with retry mechanism - 使用useCallback优化性能
+  const handleSubmit = useCallback(async (message?: string, currentRetryCount = 0) => {
     const messageToSend = message || inputValue.trim();
-    if (!messageToSend || (isLoading && currentRetryCount === 0) || copilotLoading) return;
+    if (!messageToSend || (isLoading && currentRetryCount === 0) || copilotLoading || isSending) return;
+    
+    // 防止重复发送
+    if (currentRetryCount === 0) {
+      setIsSending(true);
+    }
 
     // Reset error and retry states on first attempt
     if (currentRetryCount === 0) {
@@ -231,8 +240,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
         content: messageToSend,
       });
 
-      // Success - reset retry count
+      // Success - reset retry count and sending state
       setRetryCount(0);
+      setIsSending(false);
 
     } catch (error) {
       console.error('Error sending message:', error);
@@ -260,14 +270,16 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       const errorMessage = createStatusMessage('Network connection failed, please check your network and try again');
       setMessages(prev => [...prev, errorMessage]);
       setError('Network connection failed, please check your network and try again');
+      setIsSending(false); // 确保在错误情况下也重置发送状态
 
     } finally {
       if (currentRetryCount >= 4 || shouldStopRetry) {
         setIsLoading(false);
         setRetryCount(0);
+        setIsSending(false);
       }
     }
-  };
+  }, [inputValue, isLoading, copilotLoading, isSending, sendMessage, shouldStopRetry, retryCount]);
 
   // 新增聊天窗口调用
   const handleNewChat = () => {
@@ -289,6 +301,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     // 重置重试计数和停止标志
     setRetryCount(0);
     setShouldStopRetry(false);
+    // 重置发送状态
+    setIsSending(false);
     // 清空输入框
     setInputValue('');
     // 清除选中的能力
@@ -531,13 +545,17 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                           onClick={() => {
                             if (isLoading || retryCount > 0 || copilotLoading) {
                               handleStopResponse();
-                            } else {
+                            } else if (!isSending) {
                               handleSubmit(inputValue);
                             }
                           }}
-                          disabled={!inputValue.trim() && !(isLoading || retryCount > 0) && !copilotLoading}
-                          className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-[#4792E6] hover:bg-[#3a7bc8] disabled:bg-gray-300 disabled:cursor-not-allowed text-white transition-all duration-200 shadow-sm hover:shadow-md disabled:shadow-none min-w-[80px] justify-center"
-                          title={isLoading || retryCount > 0 || copilotLoading ? "Stop" : "Send"}
+                          disabled={(!inputValue.trim() && !(isLoading || retryCount > 0) && !copilotLoading) || (isSending && !(isLoading || retryCount > 0 || copilotLoading))}
+                          className={`flex items-center space-x-2 px-4 py-2 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed text-white transition-all duration-200 shadow-sm hover:shadow-md disabled:shadow-none min-w-[80px] justify-center ${
+                            isLoading || retryCount > 0 || copilotLoading
+                              ? 'bg-red-600 hover:bg-red-700'
+                              : 'bg-[#4792E6] hover:bg-[#3a7bc8]'
+                          }`}
+                          title={isLoading || retryCount > 0 || copilotLoading ? "Stop" : isSending ? "Sending..." : "Send"}
                         >
                           {isLoading || retryCount > 0 || copilotLoading ? (
                             <Square size={16} />
@@ -545,7 +563,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                             <Send size={16} />
                           )}
                           <span className="text-sm font-medium">
-                            {isLoading || retryCount > 0 || copilotLoading ? "Stop" : "Send"}
+                            {isLoading || retryCount > 0 || copilotLoading ? "Stop" : isSending ? "Sending..." : "Send"}
                           </span>
                         </button>
                       </div>
@@ -719,26 +737,27 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                     {/* Send Button */}
                     <button
                       onClick={() => {
-                        if (copilotLoading) {
+                        if (isLoading || retryCount > 0 || copilotLoading) {
                           handleStopResponse();
-                        } else {
+                        } else if (!isSending) {
                           handleSubmit(inputValue);
                         }
                       }}
-                      disabled={!inputValue.trim() && !copilotLoading}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed text-white transition-all duration-200 shadow-sm hover:shadow-md disabled:shadow-none min-w-[80px] justify-center ${copilotLoading
-                        ? 'bg-red-500 hover:bg-red-600'
-                        : 'bg-[#4792E6] hover:bg-[#3a7bc8]'
-                        }`}
-                      title={copilotLoading ? "Stop" : "Send"}
+                      disabled={(!inputValue.trim() && !(isLoading || retryCount > 0) && !copilotLoading) || (isSending && !(isLoading || retryCount > 0 || copilotLoading))}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed text-white transition-all duration-200 shadow-sm hover:shadow-md disabled:shadow-none min-w-[80px] justify-center ${
+                        isLoading || retryCount > 0 || copilotLoading
+                          ? 'bg-red-600 hover:bg-red-700'
+                          : 'bg-[#4792E6] hover:bg-[#3a7bc8]'
+                      }`}
+                      title={isLoading || retryCount > 0 || copilotLoading ? "Stop" : isSending ? "Sending..." : "Send"}
                     >
-                      {copilotLoading ? (
+                      {isLoading || retryCount > 0 || copilotLoading ? (
                         <Square size={16} />
                       ) : (
                         <Send size={16} />
                       )}
                       <span className="text-sm font-medium">
-                        {copilotLoading ? "Stop" : "Send"}
+                        {isLoading || retryCount > 0 || copilotLoading ? "Stop" : isSending ? "Sending..." : "Send"}
                       </span>
                     </button>
                   </div>

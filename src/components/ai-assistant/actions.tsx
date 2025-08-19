@@ -21,9 +21,11 @@ export const useAIAssistantActions = () => {
       },
     ],
     handler: async (...rest) => {
+      console.log(rest)
       return `从后端收到：${rest}`;
     },
     render: (...rest) => {
+      console.log(rest)
       return (
         <div>render:{rest}</div>
       )
