@@ -20,8 +20,8 @@ const SimplePlanCard: React.FC<SimplePlanCardProps> = ({ steps, onExecute, onCan
       const planSteps = event?.content || [];
       
       return (
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-          <div className="flex items-center justify-between mb-3">
+        <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+          <div className="flex justify-between items-center mb-3">
             <div className="flex items-center space-x-2">
               <Zap className="w-5 h-5 text-blue-500" />
               <h3 className="font-semibold text-gray-900">Your Plan (CopilotKit Interrupt)</h3>
@@ -32,28 +32,28 @@ const SimplePlanCard: React.FC<SimplePlanCardProps> = ({ steps, onExecute, onCan
             </div>
           </div>
           
-          <div className="space-y-2 mb-4">
+          <div className="mb-4 space-y-2">
             {planSteps.map((step: string, index: number) => (
-              <div key={index} className="flex items-start space-x-3 p-2 bg-gray-50 rounded">
+              <div key={index} className="flex items-start p-2 space-x-3 bg-gray-50 rounded">
                 <div className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium mt-0.5">
                   {index + 1}
                 </div>
-                <p className="text-sm text-gray-700 flex-1">{step}</p>
+                <p className="flex-1 text-sm text-gray-700">{step}</p>
               </div>
             ))}
           </div>
           
           <div className="flex space-x-2">
             <button
-              onClick={() => resolve('cancelled')}
-              className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center space-x-2"
+              onClick={() => resolve({ code: 'CANCEL' })}
+              className="flex flex-1 justify-center items-center px-4 py-2 space-x-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg transition-colors hover:bg-gray-200"
             >
               <XCircle className="w-4 h-4" />
               <span>Cancel</span>
             </button>
             <button
-              onClick={() => resolve('approved')}
-              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center justify-center space-x-2"
+              onClick={() => resolve({ code: 'APPROVE' })}
+              className="flex flex-1 justify-center items-center px-4 py-2 space-x-2 text-sm font-medium text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700"
             >
               <CheckCircle className="w-4 h-4" />
               <span>Execute</span>

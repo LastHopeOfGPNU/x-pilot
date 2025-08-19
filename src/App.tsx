@@ -172,11 +172,6 @@ const AppContent: React.FC = () => {
   const checkOnboardingStatus = useCallback(async () => {
       const isOnboardingMockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
       
-      console.log('App.tsx: Checking onboarding status:', {
-        user: !!user,
-        isOnboardingMockMode,
-        rawMockMode: localStorage.getItem('dev-onboarding-mode')
-      });
       
       // 如果启用了mock模式，强制显示onboarding
       if (isOnboardingMockMode) {
@@ -194,7 +189,6 @@ const AppContent: React.FC = () => {
 
       try {
         const status = await onboardingService.getCurrentStep();
-        console.log('App.tsx: Got onboarding status from service:', status);
         setOnboardingStatus({
           isFinished: status.is_finished,
           currentStep: status.current_step,
@@ -202,7 +196,6 @@ const AppContent: React.FC = () => {
           error: undefined
         });
       } catch (error) {
-        console.error('Failed to check onboarding status:', error);
         // 接口失败时直接显示主页面，不显示错误信息
         setOnboardingStatus({
           isFinished: true,
