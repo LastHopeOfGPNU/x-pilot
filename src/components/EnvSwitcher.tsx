@@ -13,7 +13,7 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [showCopilotDevConsole, setShowCopilotDevConsole] = useState(false);
-  const [position, setPosition] = useState({ x: window.innerWidth - 200, y: window.innerHeight - 100 });
+  const [position, setPosition] = useState({ x: 20, y: window.innerHeight - 150 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
