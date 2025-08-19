@@ -5,19 +5,13 @@ export const useAIAssistantActions = () => {
   // 更新计划状态的Action
   useCopilotAction({
     name: "generationPlan",
-    description: "根据用户指令生成计划",
+    description: "每次用户请求回复指令时，首先使用这个工具生成计划，根据用户指令和当前状态生成计划列表，计划使用的语言要和用户输入语言保持一致。后续工具的调用需要等用户确认使用计划后再调用。",
     parameters: [
       {
-        name: "type",
-        type: "string",
-        description: "计划类型 (e.g., '自动回复')",
+        name: "plans",
+        type: "string[]",
+        description: "生成的计划列表，计划项目至少有三个，计划使用的语言要和用户输入语言保持一致",
         required: true
-      },
-      {
-        name: "content",
-        type: "object",
-        description: "计划内容",
-        required: false
       },
     ],
     handler: async (...rest) => {
