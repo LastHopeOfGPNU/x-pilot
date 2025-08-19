@@ -18,13 +18,4 @@ export interface SelectorPosition {
   left: number;
 }
 
-/**
- * 能力选择器组件属性类型
- */
-export interface CapabilitySelectorProps {
-  show: boolean;
-  selectedIndex: number;
-  position: SelectorPosition;
-  onSelect: (capability: CapabilityOption) => void;
-  onClose: () => void;
-}
+// CapabilitySelectorProps 已移至 CapabilitySelector.tsx 组件内部定义

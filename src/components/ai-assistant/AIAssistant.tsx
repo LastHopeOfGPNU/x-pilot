@@ -234,7 +234,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     // 直接显示选择器，不在输入框中添加@符号
     setShowCapabilitySelector(true);
     // 找到第一个未禁用的选项
-    setSelectedCapabilityIndex(findFirstEnabledCapabilityIndex(CAPABILITY_OPTIONS));
+    setSelectedCapabilityIndex(findFirstEnabledCapabilityIndex());
     // 设置选择器位置在输入框上方
     setSelectorPosition({ top: -280, left: 0 });
     
@@ -250,12 +250,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const handleInputChange = (value: string) => {
     setInputValue(value);
     
-    const result = handleAtSymbolLogic(value, CAPABILITY_OPTIONS);
+    const result = handleAtSymbolLogic(value);
     
-    if (result.shouldShow) {
+    if (result.shouldShowSelector) {
       setShowCapabilitySelector(true);
-      setSelectedCapabilityIndex(findFirstEnabledCapabilityIndex(CAPABILITY_OPTIONS));
-      setAtTriggerPosition(result.atIndex!);
+      setSelectedCapabilityIndex(findFirstEnabledCapabilityIndex());
+      setAtTriggerPosition(result.atPosition);
       setSelectorPosition({ top: -280, left: 0 });
     } else {
       setShowCapabilitySelector(false);
@@ -286,11 +286,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault();
-          setSelectedCapabilityIndex(prev => getNextCapabilityIndex(CAPABILITY_OPTIONS, prev, 'up'));
+          setSelectedCapabilityIndex(prev => getNextCapabilityIndex(prev, 'up'));
           return;
         case 'ArrowDown':
           e.preventDefault();
-          setSelectedCapabilityIndex(prev => getNextCapabilityIndex(CAPABILITY_OPTIONS, prev, 'down'));
+          setSelectedCapabilityIndex(prev => getNextCapabilityIndex(prev, 'down'));
           return;
         case 'Enter':
           e.preventDefault();

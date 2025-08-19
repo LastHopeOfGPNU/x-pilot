@@ -2,10 +2,10 @@ import { CapabilityOption } from '../components/ai-assistant/types';
 
 // 能力选择器选项常量
 export const CAPABILITY_OPTIONS: CapabilityOption[] = [
-  { id: 'post', label: '@post', description: 'Vibe Generation Post', disabled: true },
-  { id: 'thread', label: '@thread', description: 'Vibe Generation Thread', disabled: true },
-  { id: 'strategy', label: '@strategy', description: 'Vibe Operation Strategy', disabled: true },
-  { id: 'reply', label: '@reply', description: 'Vibe Auto Reply', disabled: false }
+  { id: 'post', label: '@post', description: 'Generate engaging posts', disabled: true },
+  { id: 'thread', label: '@thread', description: 'Create thread content', disabled: true },
+  { id: 'strategy', label: '@strategy', description: 'Plan content strategy', disabled: true },
+  { id: 'reply', label: '@reply', description: 'Auto-reply to messages', disabled: false }
 ];
 
 // 重试配置常量
