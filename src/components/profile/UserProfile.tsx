@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { User, LogOut, Settings, Mail, Calendar, Shield } from 'lucide-react'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../../contexts/AuthContext'
 
 const UserProfile: React.FC = () => {
   const { user, signOut } = useAuth()

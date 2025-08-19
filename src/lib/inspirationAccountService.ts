@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { InspirationAccount } from '../types';
+import { InspirationAccount } from '../types/index';
 import { apiConfigService } from './apiConfigService';
 
 // 对标账号接口定义

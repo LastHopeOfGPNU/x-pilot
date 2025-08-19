@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, ReactNode } from 'react';
-import { DashboardData } from '../lib/dashboardService';
+import { DashboardData } from '../services/dashboardService';
 
 // 缓存项接口
 interface CacheItem<T> {

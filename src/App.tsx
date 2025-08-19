@@ -1,23 +1,23 @@
 import React, { useState, useEffect, useCallback, createContext, useContext, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { CopilotKit } from '@copilotkit/react-core';
-import Sidebar from './components/Sidebar';
-import EngagementQueue from './components/EngagementQueue';
-import PostThreadQueue from './components/PostThreadQueue';
-import ResultsArea from './components/ResultsArea';
-import Config, { ConfigItem } from './components/Config';
-import Profile from './components/Profile';
-import Dashboard from './components/Dashboard';
-import MarketingStrategy from './components/MarketingStrategy';
-import Login from './components/Login';
+import Sidebar from './components/dashboard/Sidebar';
+import EngagementQueue from './components/auto-engagement/EngagementQueue';
+import PostThreadQueue from './components/posts-threads/PostThreadQueue';
+import ResultsArea from './components/common/ResultsArea';
+import Config, { ConfigItem } from './components/config/Config';
+import Profile from './components/profile/Profile';
+import Dashboard from './components/dashboard/Dashboard';
+import MarketingStrategy from './components/marketing-strategy/MarketingStrategy';
+import Login from './components/auth/Login';
 import TwitterAuthCallback from './pages/TwitterAuthCallback';
-import TwitterDirectCallback from './components/TwitterDirectCallback';
+import TwitterDirectCallback from './components/auth/TwitterDirectCallback';
 // Removed PlanDemo import - demo page deleted
 
 import { Card, InspirationAccount, Post } from './types/index';
-import AIAssistant from './components/AIAssistant';
-import EnvSwitcher from './components/EnvSwitcher';
-import Onboarding from './components/Onboarding';
+import AIAssistant from './components/ai-assistant/AIAssistant';
+import EnvSwitcher from './components/config/EnvSwitcher';
+import Onboarding from './components/common/Onboarding';
 
 import { apiConfigService } from './lib/apiConfigService';
 import { onboardingService } from './lib/onboardingService';

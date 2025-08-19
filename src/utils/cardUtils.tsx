@@ -1,6 +1,6 @@
 import React from 'react';
 import { MessageSquare, TrendingUp, Target, CheckCircle } from 'lucide-react';
-import { CardType, Priority } from '../types';
+import { CardType, Priority } from './types';
 
 // Card icon utility function
 export const getCardIcon = (type: CardType) => {

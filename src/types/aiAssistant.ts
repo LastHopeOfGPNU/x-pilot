@@ -66,17 +66,3 @@ export type AgentState = {
     status: 'pending' | 'approved' | 'rejected';
   }[];
 };
-
-// 能力选择器选项类型
-export interface CapabilityOption {
-  id: string;
-  label: string;
-  description: string;
-  disabled: boolean;
-}
-
-// 选择器位置类型
-export interface SelectorPosition {
-  top: number;
-  left: number;
-}

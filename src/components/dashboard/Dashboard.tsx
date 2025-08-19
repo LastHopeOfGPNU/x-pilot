@@ -21,11 +21,11 @@ import {
   Loader,
   RefreshCw
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { useDataCache } from '../contexts/DataCacheContext';
-import { dashboardService, DashboardData, Account } from '../lib/dashboardService';
-import { onboardingService, OnboardingStatusResponse } from '../lib/onboardingService';
-import { TwitterModal } from './TwitterModal';
+import { useAuth } from '../../contexts/AuthContext';
+import { useDataCache } from '../../contexts/DataCacheContext';
+import { dashboardService, DashboardData, Account } from '../../lib/dashboardService';
+import { onboardingService, OnboardingStatusResponse } from '../../lib/onboardingService';
+import { TwitterModal } from '../auth/TwitterModal';
 
 // Loading Card Component
 const LoadingCard: React.FC = () => (
@@ -55,7 +55,7 @@ const OnboardingProgress: React.FC<{
   
   if (loading) {
     return (
-      <div className="w-full p-4 mb-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
+      <div className="p-4 mb-6 w-full rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
         <div className="flex justify-center items-center">
           <Loader className="w-5 h-5 text-blue-500 animate-spin" />
           <span className="ml-2 text-sm text-gray-600">Loading onboarding status...</span>
@@ -77,17 +77,17 @@ const OnboardingProgress: React.FC<{
     });
     
     return (
-      <div className="w-full p-4 mb-6 rounded-xl border backdrop-blur-sm bg-gradient-to-r from-green-50/80 to-emerald-50/80 border-green-200/50">
-        <div className="flex items-center justify-between">
+      <div className="p-4 mb-6 w-full bg-gradient-to-r rounded-xl border backdrop-blur-sm from-green-50/80 to-emerald-50/80 border-green-200/50">
+        <div className="flex justify-between items-center">
           <div className="flex items-center">
-            <CheckCircle className="w-6 h-6 text-green-600 mr-3" />
+            <CheckCircle className="mr-3 w-6 h-6 text-green-600" />
             <div>
               <h3 className="text-lg font-semibold text-green-800">Onboarding Complete!</h3>
               <p className="text-sm text-green-700">Welcome to XPilot! You're all set up and ready to go.</p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-sm text-green-600 font-medium">Completed on</p>
+            <p className="text-sm font-medium text-green-600">Completed on</p>
             <p className="text-sm text-green-800">{today}</p>
           </div>
         </div>
@@ -101,8 +101,8 @@ const OnboardingProgress: React.FC<{
   const remainingSteps = totalSteps - currentStepIndex - 1;
   
   return (
-    <div className="w-full p-4 mb-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
-      <div className="flex items-center justify-between mb-3">
+    <div className="p-4 mb-6 w-full rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
+      <div className="flex justify-between items-center mb-3">
         <div>
           <h3 className="text-lg font-semibold text-gray-800">Onboarding Progress</h3>
           <p className="text-sm text-gray-600">
@@ -117,9 +117,9 @@ const OnboardingProgress: React.FC<{
       </div>
       
       {/* 进度条 */}
-      <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+      <div className="mb-3 w-full h-2 bg-gray-200 rounded-full">
         <div 
-          className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500"
+          className="h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
           style={{ width: `${((currentStepIndex + 1) / totalSteps) * 100}%` }}
         ></div>
       </div>
@@ -140,10 +140,10 @@ const OnboardingProgress: React.FC<{
             <div key={step} className="flex flex-col items-center">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-300 ${
                 isCompleted 
-                  ? 'bg-green-500 text-white' 
+                  ? 'text-white bg-green-500' 
                   : isCurrent 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-200 text-gray-500'
+                    ? 'text-white bg-blue-500' 
+                    : 'text-gray-500 bg-gray-200'
               }`}>
                 {isCompleted ? (
                   <CheckCircle className="w-4 h-4" />

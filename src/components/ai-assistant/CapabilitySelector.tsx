@@ -1,14 +1,6 @@
 import React from 'react';
-import { CapabilityOption, SelectorPosition } from '../types/aiAssistant';
-import { CAPABILITY_OPTIONS } from '../constants/aiAssistant';
-
-interface CapabilitySelectorProps {
-  show: boolean;
-  selectedIndex: number;
-  position: SelectorPosition;
-  onSelect: (capability: CapabilityOption) => void;
-  onClose: () => void;
-}
+import { CapabilityOption, SelectorPosition, CapabilitySelectorProps } from './types';
+import { CAPABILITY_OPTIONS } from '../../constants/aiAssistant';
 
 /**
  * 能力选择器组件
@@ -24,14 +16,14 @@ const CapabilitySelector: React.FC<CapabilitySelectorProps> = ({
 
   return (
     <div 
-      className="absolute z-50 w-80 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+      className="overflow-y-auto absolute z-50 w-80 max-h-60 bg-white rounded-lg border border-gray-200 shadow-lg"
       style={{
         top: position.top,
         left: position.left
       }}
     >
       <div className="p-2">
-        <div className="text-xs text-gray-500 mb-2 px-2">选择能力模式</div>
+        <div className="px-2 mb-2 text-xs text-gray-500">选择能力模式</div>
         {CAPABILITY_OPTIONS.map((option, index) => (
           <div
             key={option.id}
@@ -86,8 +78,8 @@ const CapabilitySelector: React.FC<CapabilitySelectorProps> = ({
           </div>
         ))}
       </div>
-      <div className="border-t border-gray-100 p-2 text-xs text-gray-500">
-        <div className="flex items-center justify-between">
+      <div className="p-2 text-xs text-gray-500 border-t border-gray-100">
+        <div className="flex justify-between items-center">
           <span>↑↓ 选择 • Enter 确认 • Esc 取消</span>
         </div>
       </div>

@@ -14,7 +14,7 @@ import {
   MessageCircle,
   Search 
 } from 'lucide-react';
-import { MarketingStrategy as MarketingStrategyType } from '../App';
+import { MarketingStrategy as MarketingStrategyType } from '../../App';
 
 interface MarketingStrategyProps {
   onStrategyClick: (strategy: MarketingStrategyType) => void;

@@ -1,5 +1,6 @@
 import { User } from '@supabase/supabase-js';
-import { CapabilityOption, Message } from '../types/aiAssistant';
+import { CapabilityOption } from '../components/ai-assistant/types';
+import { Message } from '../types/aiAssistant';
 import { CAPABILITY_OPTIONS } from '../constants/aiAssistant';
 
 /**

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, CheckCircle, AlertCircle, Clock } from 'lucide-react'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../../contexts/AuthContext'
 import GoogleLoginButton from './GoogleLoginButton'
 
 interface LoginProps {

@@ -1,4 +1,4 @@
-import { CapabilityOption } from '../types/aiAssistant';
+import { CapabilityOption } from '../components/ai-assistant/types';
 
 // 能力选择器选项常量
 export const CAPABILITY_OPTIONS: CapabilityOption[] = [

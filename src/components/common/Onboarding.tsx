@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, CheckCircle, Twitter, Users, Zap, Sparkles, Loader2, AlertCircle, Star, MessageCircle, Target, Settings } from 'lucide-react';
-import { onboardingService, OnboardingStep } from '../lib/onboardingService';
-import { twitterService, TwitterConnection, TwitterConnectionStatus } from '../lib/twitterService';
-import { inspirationAccountService } from '../lib/inspirationAccountService';
-import { useAuth } from '../contexts/AuthContext';
-import { InspirationAccount } from '../types';
-import EnvSwitcher from './EnvSwitcher';
+import { onboardingService, OnboardingStep } from '../../lib/onboardingService';
+import { twitterService, TwitterConnection, TwitterConnectionStatus } from '../../lib/twitterService';
+import { inspirationAccountService } from '../../lib/inspirationAccountService';
+import { useAuth } from '../../contexts/AuthContext';
+import { InspirationAccount } from '../../types';
+import EnvSwitcher from '../config/EnvSwitcher';
 import ConfirmationModal from './ConfirmationModal';
 
 interface OnboardingProps {

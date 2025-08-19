@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertCircle, Square } from 'lucide-react';
-import { isStatusMessage } from '../utils/aiAssistantUtils';
+import { isStatusMessage } from '../../utils/aiAssistantUtils';
 
 interface StatusMessageProps {
   content: string;

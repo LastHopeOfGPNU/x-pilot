@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Activity, MessageSquare, Repeat2, Search, Users, Star, Target } from 'lucide-react';
-import { InspirationAccount, Card } from '../types';
-import CardItem from './CardItem';
+import { InspirationAccount, Card } from '../../types';
+import CardItem from '../common/CardItem';
 import AutoReplyCard from './AutoReplyCard';
-import InspirationAccountCard from './InspirationAccountCard';
-import Toast from './Toast';
-import { inspirationAccountService } from '../lib/inspirationAccountService';
-import { engagementService } from '../lib/engagementService';
+import InspirationAccountCard from '../inspiration-accounts/InspirationAccountCard';
+import Toast from '../common/Toast';
+import { inspirationAccountService } from '../../lib/inspirationAccountService';
+import { engagementService } from '../../lib/engagementService';
 
 interface EngagementQueueProps {
   showInspirationAccounts?: boolean;

@@ -1,4 +1,4 @@
-import { Card } from '../types';
+import { Card } from '../types/index';
 import { supabase } from './supabase';
 import { apiConfigService } from './apiConfigService';
 

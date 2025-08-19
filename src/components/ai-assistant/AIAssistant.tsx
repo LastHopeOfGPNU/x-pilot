@@ -1,28 +1,27 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Send, Zap, ChevronLeft, ChevronRight, Square, AlertCircle, Maximize2, Minimize2, Plus, User} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import PlanGenerationCard from './PlanGenerationCard';
-import SimplePlanCard from './SimplePlanCard';
-import ExecutionStepsCard from './ExecutionStepsCard';
-import StatusMessage from './StatusMessage';
+import PlanGenerationCard from '../common/PlanGenerationCard';
+import SimplePlanCard from '../common/SimplePlanCard';
+import ExecutionStepsCard from '../common/ExecutionStepsCard';
+import StatusMessage from '../common/StatusMessage';
 import CapabilitySelector from './CapabilitySelector';
 import { useCopilotChatHeadless_c, useCopilotAction, useCopilotReadable, useCopilotContext, useCoAgentStateRender } from '@copilotkit/react-core';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { 
   Message, 
   PlanData, 
   AIAssistantProps, 
-  AgentState, 
-  CapabilityOption,
-  SelectorPosition 
-} from '../types';
+  AgentState
+} from '../../types';
+import { CapabilityOption, SelectorPosition } from './types';
 import { 
   CAPABILITY_OPTIONS, 
   RETRY_CONFIG, 
   SELECTOR_CONFIG,
   generateThreadId,
   generateMessageId 
-} from '../constants/aiAssistant';
+} from '../../constants/aiAssistant';
 import {
   getUserDisplayName,
   findFirstEnabledCapabilityIndex,
@@ -31,7 +30,7 @@ import {
   getNextCapabilityIndex,
   createStatusMessage,
   calculateRetryDelay
-} from '../utils/aiAssistantUtils';
+} from '../../utils/aiAssistantUtils';
 
 // 类型定义已移至 ../types/aiAssistant.ts
 // 常量定义已移至 ../constants/aiAssistant.ts

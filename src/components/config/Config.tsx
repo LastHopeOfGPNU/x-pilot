@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, MessageSquare, Repeat2, Clock, ToggleLeft, ToggleRight } from 'lucide-react';
-import { configService, ConfigItem as ApiConfigItem } from '../lib/configService';
+import { configService, ConfigItem as ApiConfigItem } from '../../lib/configService';
 
 interface ConfigProps {
   onItemClick?: (item: ConfigItem) => void;
