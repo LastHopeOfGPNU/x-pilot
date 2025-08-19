@@ -14,14 +14,43 @@ export const useAIAssistantActions = () => {
         required: true
       },
     ],
-    handler: async (...rest) => {
-      console.log(rest)
-      return `从后端收到：${rest}`;
-    },
-    render: (...rest) => {
-      console.log(rest)
+    renderAndWaitForResponse: ({ respond, args, status }) => {
+      if (status === "complete") {
+        return <div>
+          <p>Generation Plan completed...</p>
+        </div>;
+      }
+
+      const { plans } = args || {};
+
       return (
-        <div>render:{rest}</div>
+        <div className="p-6 bg-white rounded-lg border border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700">
+          <h3 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">
+            Auto Reply Plan
+          </h3>
+
+          <div className="mb-6 space-y-3">
+            {plans?.map((plan, index) => (
+              <div key={index} className="flex items-start space-x-3">
+                <div className="flex flex-shrink-0 justify-center items-center w-6 h-6 text-sm font-medium text-blue-600 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-300">
+                  {index + 1}
+                </div>
+                <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                  {plan}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex space-x-3">
+            <button onClick={() => respond?.(args.name)} className="flex-1 px-4 py-2 font-medium text-white bg-blue-600 rounded-md transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+              Execute
+            </button>
+            <button onClick={() => respond?.(null)} className="flex-1 px-4 py-2 font-medium text-gray-800 bg-gray-200 rounded-md transition-colors hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+              Cancel
+            </button>
+          </div>
+        </div>
       )
     },
   });

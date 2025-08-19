@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 
 import StatusMessage from '../common/StatusMessage';
 import CapabilitySelector from './CapabilitySelector';
-import {  useCopilotChatHeadless_c, useCopilotContext } from '@copilotkit/react-core';
+import { useCopilotChatHeadless_c, useCopilotContext } from '@copilotkit/react-core';
 import { useAIAssistantActions } from './actions';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAIAgentState } from './ShareState';
@@ -216,7 +216,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
         // 忽略停止生成时的错误，这是正常的用户操作
         console.log('Stop generation completed');
       }
-      
+
       setIsSending(false); // 重置发送状态
 
       // Add user stop message for CopilotKit responses
@@ -229,12 +229,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const handleSubmit = useCallback(async (message?: string, currentRetryCount = 0) => {
     let messageToSend = message || inputValue.trim();
     if (!messageToSend || (isLoading && currentRetryCount === 0) || copilotLoading || isSending) return;
-    
+
     // 如果有选中的能力，在消息开头添加工具名称
     if (selectedCapability && currentRetryCount === 0) {
       messageToSend = `${selectedCapability.label} ${messageToSend}`;
     }
-    
+
     // 防止重复发送
     if (currentRetryCount === 0) {
       setIsSending(true);
@@ -340,16 +340,13 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     return copilotMessages
       .filter(msg => msg && msg.content !== undefined)
       .map(msg => {
-        // 处理CopilotKit headless消息格式
-        const isUser = msg.role === 'user';
         return {
+          ...msg,
           id: msg.id || generateMessageId(),
-          role: isUser ? 'user' : 'assistant',
           content: msg.content || '',
           timestamp: msg.timestamp || new Date().toISOString()
         };
       })
-      .filter(msg => msg.content && msg.content.trim().length > 0); // 过滤掉空内容的消息
   };
 
   // 使用CopilotKit消息作为主要消息源，本地消息仅用于临时显示
@@ -571,11 +568,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                             }
                           }}
                           disabled={(!inputValue.trim() && !(isLoading || retryCount > 0) && !copilotLoading) || (isSending && !(isLoading || retryCount > 0 || copilotLoading))}
-                          className={`flex items-center space-x-2 px-4 py-2 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed text-white transition-all duration-200 shadow-sm hover:shadow-md disabled:shadow-none min-w-[80px] justify-center ${
-                            isLoading || retryCount > 0 || copilotLoading
-                              ? 'bg-red-600 hover:bg-red-700'
-                              : 'bg-[#4792E6] hover:bg-[#3a7bc8]'
-                          }`}
+                          className={`flex items-center space-x-2 px-4 py-2 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed text-white transition-all duration-200 shadow-sm hover:shadow-md disabled:shadow-none min-w-[80px] justify-center ${isLoading || retryCount > 0 || copilotLoading
+                            ? 'bg-red-600 hover:bg-red-700'
+                            : 'bg-[#4792E6] hover:bg-[#3a7bc8]'
+                            }`}
                           title={isLoading || retryCount > 0 || copilotLoading ? "Stop" : isSending ? "Sending..." : "Send"}
                         >
                           {isLoading || retryCount > 0 || copilotLoading ? (
@@ -625,9 +621,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         </div>
 
                         {/* @reply 标签 - 用户和AI消息都显示 */}
-                        {message.content.startsWith('@reply') && (
+                        {message.content?.startsWith('@reply') && (
                           <div className={`mb-2 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full border border-green-200">
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full border border-green-200">
                               <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
                               Auto Reply
                             </span>
@@ -648,22 +644,23 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         >
                           {/* Check if this is a status message */}
                           {message.role === 'assistant' && (
-                            message.content.includes('Network retry') ||
-                            message.content.includes('Network connection failed') ||
-                            message.content.includes('网络异常') ||
-                            message.content.includes('Response stopped by user') ||
-                            message.content.includes('用户中止响应')
+                            message.content?.includes('Network retry') ||
+                            message.content?.includes('Network connection failed') ||
+                            message.content?.includes('网络异常') ||
+                            message.content?.includes('Response stopped by user') ||
+                            message.content?.includes('用户中止响应')
                           ) ? (
                             <StatusMessage content={message.content} />
                           ) : (
                             <div className="break-words">
                               <ReactMarkdown>
-                                {message.content.startsWith('@reply ') 
+                                {message.content?.startsWith('@reply ')
                                   ? message.content.substring(7) // 移除 "@reply " 前缀
                                   : message.content
                                 }
                               </ReactMarkdown>
-                              {/* {message.role === "assistant" && message.generativeUI?.()} */}
+                              {/* This will render the tool-based HITL if it exists */}
+                              {message.role === "assistant" && message.generativeUI?.()}
                             </div>
                           )}
                         </div>
@@ -767,7 +764,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                       title="Select Capability"
                     >
                       <span className="text-sm font-medium">@</span>
-                      <span className="text-sm">Select Capability</span>
+                      <span className="text-sm">Tools</span>
                     </button>
 
                     {/* Send Button */}
@@ -780,11 +777,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         }
                       }}
                       disabled={(!inputValue.trim() && !(isLoading || retryCount > 0) && !copilotLoading) || (isSending && !(isLoading || retryCount > 0 || copilotLoading))}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed text-white transition-all duration-200 shadow-sm hover:shadow-md disabled:shadow-none min-w-[80px] justify-center ${
-                        isLoading || retryCount > 0 || copilotLoading
-                          ? 'bg-red-600 hover:bg-red-700'
-                          : 'bg-[#4792E6] hover:bg-[#3a7bc8]'
-                      }`}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed text-white transition-all duration-200 shadow-sm hover:shadow-md disabled:shadow-none min-w-[80px] justify-center ${isLoading || retryCount > 0 || copilotLoading
+                        ? 'bg-red-600 hover:bg-red-700'
+                        : 'bg-[#4792E6] hover:bg-[#3a7bc8]'
+                        }`}
                       title={isLoading || retryCount > 0 || copilotLoading ? "Stop" : isSending ? "Sending..." : "Send"}
                     >
                       {isLoading || retryCount > 0 || copilotLoading ? (
