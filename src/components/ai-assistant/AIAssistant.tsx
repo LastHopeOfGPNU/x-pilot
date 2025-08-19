@@ -7,6 +7,7 @@ import CapabilitySelector from './CapabilitySelector';
 import {  useCopilotChatHeadless_c, useCopilotContext } from '@copilotkit/react-core';
 import { useAIAssistantActions } from './actions';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAIAgentState } from './ShareState';
 import {
   Message,
   AIAssistantProps
@@ -33,6 +34,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   // Get user display name - memoized to prevent unnecessary re-renders
   const userDisplayName = useMemo(() => getUserDisplayName(user), [user]);
 
+  // Local UI state management
   const [inputValue, setInputValue] = useState('');
   const [isMinimized, setIsMinimized] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -40,13 +42,28 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const [showCapabilitySelector, setShowCapabilitySelector] = useState(false);
   const [selectedCapabilityIndex, setSelectedCapabilityIndex] = useState(0);
   const [selectorPosition, setSelectorPosition] = useState({ top: 0, left: 0 });
-  const [error, setError] = useState<string | null>(null);
   const [selectedCapability, setSelectedCapability] = useState<typeof CAPABILITY_OPTIONS[0] | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
-  const [shouldStopRetry, setShouldStopRetry] = useState(false);
-  const [isSending, setIsSending] = useState(false); // 添加发送状态防止重复点击
+
+  // Use shared agent state management for core agent states
+  const {
+    state,
+    setError,
+    setIsLoading,
+    setRetryCount,
+    setShouldStopRetry,
+    setIsSending
+  } = useAIAgentState();
+
+  // Destructure agent state for easier access
+  const {
+    error,
+    isLoading,
+    retryCount,
+    shouldStopRetry,
+    isSending
+  } = state;
+
   // CopilotKit integration - no need for manual retry logic
 
   // CopilotKit chat integration
