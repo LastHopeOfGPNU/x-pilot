@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import React, { useState, useEffect, useCallback, createContext, useContext, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { CopilotKit } from '@copilotkit/react-core';
 import Sidebar from './components/Sidebar';
@@ -51,7 +51,7 @@ const LayoutContext = createContext<{
 export const useLayout = () => useContext(LayoutContext);
 
 const AppContent: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, session } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [onboardingStatus, setOnboardingStatus] = useState<{
     isFinished: boolean;
@@ -76,6 +76,17 @@ const AppContent: React.FC = () => {
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [apiBaseUrl, setApiBaseUrl] = useState<string>(apiConfigService.getApiBaseUrl());
   const [showCopilotDevConsole, setShowCopilotDevConsole] = useState(devConfigService.getShowCopilotDevConsole());
+
+  // 动态生成 CopilotKit headers，包含 Bearer token
+  const copilotHeaders = useMemo(() => {
+    if (session?.access_token) {
+      return {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      };
+    }
+    return {};
+  }, [session?.access_token]);
 
   // 使用useCallback避免onComplete函数重复创建 - 必须在所有条件渲染之前
   const handleOnboardingComplete = useCallback(() => {
@@ -363,6 +374,7 @@ const AppContent: React.FC = () => {
       agent='chat_agent'
       showDevConsole={showCopilotDevConsole}
       publicLicenseKey={import.meta.env.VITE_COPILOTKIT_PUBLIC_LICENSE_KEY}
+      headers={copilotHeaders}
     >
       <LayoutContext.Provider value={{ isAIChatExpanded, setIsAIChatExpanded }}>
         <div className="flex overflow-hidden h-screen bg-gray-50">
