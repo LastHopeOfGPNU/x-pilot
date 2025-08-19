@@ -22,3 +22,4 @@
 20250819：
 - [x] engaggement queue 最大宽度仅仅时卡片宽度
 - [ ] 联调完engagement后，需要检查dashboard的activity
+- [ ] 点击fullscreen后，不受点击失焦得影响

@@ -182,7 +182,6 @@ const AppContent: React.FC = () => {
       
       // 如果没有用户且不是mock模式，直接跳过onboarding检查
       if (!user && !isOnboardingMockMode) {
-        console.log('App.tsx: No user and not mock mode, skipping onboarding');
         setOnboardingStatus({ isFinished: true, currentStep: 'ENGAGEMENT', loading: false, error: undefined });
         return;
       }
