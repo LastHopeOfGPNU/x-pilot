@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useDataCache } from '../contexts/DataCacheContext';
-import { dashboardService, DashboardData } from '../lib/dashboardService';
+import { dashboardService, DashboardData, Account } from '../lib/dashboardService';
 import { TwitterModal } from './TwitterModal';
 
 // Loading Card Component
@@ -72,10 +72,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   });
   
   // Twitter模态框状态
-  const [twitterModal, setTwitterModal] = useState({
+  const [twitterModal, setTwitterModal] = useState<{
+    isOpen: boolean;
+    username: string;
+    displayName: string;
+    accountData?: Account;
+  }>({
     isOpen: false,
     username: '',
-    displayName: ''
+    displayName: '',
+    accountData: undefined
   });
   const [refreshButtonFlash, setRefreshButtonFlash] = useState(false);
   
@@ -105,6 +111,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     } catch (err) {
       console.error('Failed to fetch dashboard data:', err);
       setError('Failed to load dashboard data. Please try again.');
+      
+      // 触发refresh按钮闪烁效果
+      setRefreshButtonFlash(true);
+      setTimeout(() => {
+        setRefreshButtonFlash(false);
+      }, 3000);
     } finally {
       setDashboardLoading(false);
       setBackgroundLoading(false);
@@ -224,11 +236,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   };
 
   // Handle account click to open Twitter modal
-  const handleAccountClick = (username: string, displayName?: string) => {
+  const handleAccountClick = (username: string, displayName?: string, accountData?: Account) => {
     setTwitterModal({
       isOpen: true,
       username,
-      displayName: displayName || ''
+      displayName: displayName || '',
+      accountData
     });
   };
 
@@ -237,7 +250,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     setTwitterModal({
       isOpen: false,
       username: '',
-      displayName: ''
+      displayName: '',
+      accountData: undefined
     });
   };
 
@@ -451,7 +465,7 @@ const ErrorCard = ({ message, className = "" }: { message: string; className?: s
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleAccountClick(account.username, account.display_name);
+                        handleAccountClick(account.username, account.display_name, account);
                       }}
                       className="flex justify-center items-center w-8 h-8 rounded-full transition-all duration-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                       aria-label={`Open ${account.display_name}'s Twitter profile`}
@@ -585,12 +599,6 @@ const ErrorCard = ({ message, className = "" }: { message: string; className?: s
             <div className="flex flex-col justify-center items-center h-32 text-center">
               <AlertCircle className="mb-2 w-6 h-6 text-red-500" />
               <p className="mb-2 text-sm text-red-600">Failed to load recent activity</p>
-              <button 
-                onClick={fetchDashboardData}
-                className="px-3 py-1 text-xs text-white bg-blue-600 rounded transition-colors hover:bg-blue-700"
-              >
-                Retry
-              </button>
             </div>
           ) : dashboardData ? (
             <div className="space-y-3">
@@ -621,68 +629,33 @@ const ErrorCard = ({ message, className = "" }: { message: string; className?: s
 
         {/* Performance Overview */}
         <div className="grid grid-cols-2 gap-4">
-          {loading || error ? (
-            <>
-              {error ? (
-                <ErrorCard message="Failed to load growth metrics" onRetry={fetchDashboardData} />
-              ) : (
-                <LoadingCard />
-              )}
-              {error ? (
-                <ErrorCard message="Failed to load system status" onRetry={fetchDashboardData} />
-              ) : (
-                <LoadingCard />
-              )}
-            </>
-          ) : dashboardData ? (
-            <>
-              <div className="p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
-                <h4 className="flex items-center mb-4 font-semibold text-gray-900">
-                  <TrendingUp className="mr-2 w-5 h-5 text-green-500" />
-                  Growth Metrics
-                </h4>
-                <div className="flex justify-center items-center h-20">
-                   <div className="text-center">
-                     <div className="mb-1 text-xl font-bold text-gray-600">{dashboardData?.growth_metrics?.status || 'N/A'}</div>
-                <div className="text-sm text-gray-500">{dashboardData?.growth_metrics?.description || 'No data available'}</div>
-                   </div>
-                 </div>
+          {/* Growth Metrics - 静态内容 */}
+          <div className="p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
+            <h4 className="flex items-center mb-4 font-semibold text-gray-900">
+              <TrendingUp className="mr-2 w-5 h-5 text-green-500" />
+              Growth Metrics
+            </h4>
+            <div className="flex justify-center items-center h-20">
+              <div className="text-center">
+                <div className="mb-1 text-xl font-bold text-gray-600">Comming Soon</div>
+                <div className="text-sm text-gray-500">Growth metrics tracking active</div>
               </div>
+            </div>
+          </div>
 
-              <div className="p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
-                <h4 className="flex items-center mb-4 font-semibold text-gray-900">
-                  <Activity className="mr-2 w-5 h-5 text-blue-500" />
-                  System Status
-                </h4>
-                {/* <div className="space-y-3">
-                   <div className="flex items-center space-x-2">
-                     <div className={`w-2 h-2 rounded-full ${
-                       dashboardData?.system_status?.auto_engagement_active ? 'bg-green-500' : 'bg-red-500'
-                     }`}></div>
-                     <span className="text-sm text-gray-700">Auto Engagement {dashboardData?.system_status?.auto_engagement_active ? 'Active' : 'Inactive'}</span>
-                   </div>
-                   <div className="flex items-center space-x-2">
-                     <div className={`w-2 h-2 rounded-full ${
-                       dashboardData?.system_status?.reply_queue_processing ? 'bg-green-500' : 'bg-red-500'
-                     }`}></div>
-                     <span className="text-sm text-gray-700">Reply Queue {dashboardData?.system_status?.reply_queue_processing ? 'Processing' : 'Stopped'}</span>
-                   </div>
-                   <div className="flex items-center space-x-2">
-                     <div className={`w-2 h-2 rounded-full ${
-                       dashboardData?.system_status?.all_accounts_connected ? 'bg-green-500' : 'bg-red-500'
-                     }`}></div>
-                     <span className="text-sm text-gray-700">All Accounts {dashboardData?.system_status?.all_accounts_connected ? 'Connected' : 'Disconnected'}</span>
-                   </div>
-                 </div> */}
-                    <div className="flex justify-center items-center h-20">
-                   <div className="text-center">
-                     <div className="mb-1 text-xl font-bold text-gray-600">{dashboardData?.growth_metrics?.status || 'N/A'}</div>
-                <div className="text-sm text-gray-500">{dashboardData?.growth_metrics?.description || 'No data available'}</div>
-                   </div>
-                 </div>
+          {/* System Status - 静态内容 */}
+          <div className="p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50">
+            <h4 className="flex items-center mb-4 font-semibold text-gray-900">
+              <Activity className="mr-2 w-5 h-5 text-blue-500" />
+              System Status
+            </h4>
+            <div className="flex justify-center items-center h-20">
+              <div className="text-center">
+                <div className="mb-1 text-xl font-bold text-gray-600">Comming Soon</div>
+                <div className="text-sm text-gray-500">All systems running normally</div>
               </div>
-            </>
-          ) : null}
+            </div>
+          </div>
         </div>
       </div>
       
@@ -692,6 +665,7 @@ const ErrorCard = ({ message, className = "" }: { message: string; className?: s
         onClose={closeTwitterModal}
         username={twitterModal.username}
         displayName={twitterModal.displayName}
+        accountData={twitterModal.accountData}
         onLoadError={handleTwitterLoadError}
       />
     </div>

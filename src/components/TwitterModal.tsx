@@ -1,12 +1,24 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { X, RefreshCw } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import { X, CheckCircle, Star, Target } from 'lucide-react';
+
+interface Account {
+  id: string;
+  username: string;
+  display_name: string;
+  profile_image_url: string | null;
+  followers_count: number;
+  verified: boolean;
+  is_starred: boolean;
+  is_target: boolean;
+}
 
 interface TwitterModalProps {
   isOpen: boolean;
   onClose: () => void;
   username: string;
   displayName?: string;
-  onLoadError?: () => void; // Callback to trigger refresh button flash
+  accountData?: Account;
+  onLoadError?: () => void;
 }
 
 export const TwitterModal: React.FC<TwitterModalProps> = ({
@@ -14,10 +26,10 @@ export const TwitterModal: React.FC<TwitterModalProps> = ({
   onClose,
   username,
   displayName,
+  accountData,
   onLoadError
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
-  const [loadingState, setLoadingState] = useState<'loading' | 'error' | 'loaded'>('loading');
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -39,20 +51,7 @@ export const TwitterModal: React.FC<TwitterModalProps> = ({
     };
   }, [isOpen, onClose]);
 
-  // Simulate loading and error states
-  useEffect(() => {
-    if (isOpen) {
-      setLoadingState('loading');
-      // Simulate loading time
-      const timer = setTimeout(() => {
-        // Simulate X.com blocking iframe (always fails)
-        setLoadingState('error');
-        onLoadError?.(); // Trigger refresh button flash
-      }, 2000);
 
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, onLoadError]);
 
   // 点击背景关闭模态框
   const handleBackdropClick = (event: React.MouseEvent) => {
@@ -71,22 +70,19 @@ export const TwitterModal: React.FC<TwitterModalProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
-      <div className="relative mx-4 h-[90vh] w-full max-w-6xl overflow-hidden rounded-lg bg-white shadow-2xl dark:bg-gray-900">
+      <div className="relative mx-4 w-full max-w-lg overflow-hidden rounded-lg bg-white shadow-2xl dark:bg-gray-900">
         {/* 模态框头部 */}
-        <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-700 dark:bg-gray-900">
+        <div className="flex items-center justify-between border-b border-gray-200 bg-white px-5 py-4 dark:border-gray-700 dark:bg-gray-900">
           <div className="flex items-center space-x-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black dark:bg-white">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-black dark:bg-white">
               <svg className="h-4 w-4 text-white dark:text-black" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {displayName || `@${username}`}
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                Profile Preview
               </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                @{username}
-              </p>
             </div>
           </div>
           
@@ -103,47 +99,72 @@ export const TwitterModal: React.FC<TwitterModalProps> = ({
         </div>
 
         {/* 内容区域 */}
-        <div className="flex h-[calc(90vh-80px)] w-full flex-col items-center justify-center space-y-6 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-900">
-          {/* Twitter图标 */}
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-blue-500 shadow-lg">
-            <svg className="h-10 w-10 text-white" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-            </svg>
+        <div className="p-6 space-y-6">
+          {/* 用户资料卡片 */}
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-800 rounded-xl p-6 border border-blue-100 dark:border-gray-600">
+            <div className="flex items-start space-x-4">
+              {/* 头像 */}
+              <div className="relative flex-shrink-0">
+                {accountData?.profile_image_url ? (
+                  <img
+                    src={accountData.profile_image_url}
+                    alt={accountData.display_name}
+                    className="w-16 h-16 rounded-full border-3 border-white shadow-lg object-cover"
+                  />
+                ) : (
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full border-3 border-white shadow-lg flex items-center justify-center">
+                    <span className="text-xl font-bold text-white">
+                      {(accountData?.display_name || displayName || username).charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                {accountData?.verified && (
+                  <CheckCircle className="absolute -bottom-1 -right-1 w-5 h-5 text-blue-500 bg-white rounded-full" />
+                )}
+              </div>
+
+              {/* 用户信息 */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2 mb-1">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">
+                    {accountData?.display_name || displayName || username}
+                  </h3>
+                  <div className="flex items-center space-x-1">
+                    {accountData?.is_starred && (
+                      <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                    )}
+                    {accountData?.is_target && (
+                      <Target className="w-4 h-4 text-green-500" />
+                    )}
+                  </div>
+                </div>
+                <p className="text-gray-600 dark:text-gray-300 mb-3">
+                  @{accountData?.username || username}
+                </p>
+                
+                {/* 关注者数量 */}
+                {accountData?.followers_count !== undefined && (
+                  <div className="flex items-center space-x-4 text-sm">
+                    <div className="bg-white dark:bg-gray-700 px-3 py-1 rounded-full border border-gray-200 dark:border-gray-600">
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        {accountData.followers_count.toLocaleString()}
+                      </span>
+                      <span className="text-gray-500 dark:text-gray-400 ml-1">
+                        followers
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* 用户信息 */}
-          <div className="text-center">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {displayName || `@${username}`}
-            </h3>
-            <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
-              @{username}
+          {/* 安全提示 */}
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              Due to X's security restrictions, we cannot display live content directly. Click "View on X" to see the complete profile.
             </p>
           </div>
-
-          {/* Content based on loading state */}
-          {loadingState === 'loading' ? (
-            <div className="max-w-md text-center">
-              <div className="mb-4 flex justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
-              </div>
-              <p className="text-gray-700 dark:text-gray-300">
-                Loading X content...
-              </p>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                Please wait while we load the profile information.
-              </p>
-            </div>
-          ) : (
-            <div className="max-w-md text-center">
-              <p className="text-gray-700 dark:text-gray-300">
-                Unable to load X content
-              </p>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                Due to security restrictions, X content cannot be displayed directly here. Click the button below to view the complete profile in a new tab.
-              </p>
-            </div>
-          )}
 
           {/* 操作按钮 */}
           <div className="flex flex-col space-y-3 sm:flex-row sm:space-x-4 sm:space-y-0">
