@@ -3,6 +3,8 @@
  * 用于管理开发环境中的各种配置选项
  */
 
+import { apiConfigService } from './apiConfigService';
+
 class DevConfigService {
   private static instance: DevConfigService;
   private listeners: ((config: DevConfig) => void)[] = [];
@@ -56,11 +58,20 @@ class DevConfigService {
   }
 
   /**
+   * 获取CopilotKit Runtime URL
+   */
+  public getCopilotKitRuntimeUrl(): string {
+    const apiBaseUrl = apiConfigService.getApiBaseUrl();
+    return `${apiBaseUrl}/copilotkit`;
+  }
+
+  /**
    * 获取所有开发配置
    */
   public getDevConfig(): DevConfig {
     return {
-      showCopilotDevConsole: this.getShowCopilotDevConsole()
+      showCopilotDevConsole: this.getShowCopilotDevConsole(),
+      copilotKitRuntimeUrl: this.getCopilotKitRuntimeUrl()
     };
   }
 
@@ -105,6 +116,7 @@ class DevConfigService {
 // 开发配置接口
 export interface DevConfig {
   showCopilotDevConsole: boolean;
+  copilotKitRuntimeUrl: string;
 }
 
 // 导出单例实例
