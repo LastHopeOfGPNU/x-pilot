@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, CheckCircle, Twitter, Users, Zap, Sparkles, Loader2, AlertCircle, Star, MessageCircle, Target, Settings } from 'lucide-react';
 import { onboardingService, OnboardingStep } from '../lib/onboardingService';
-import { twitterService, TwitterConnection } from '../lib/twitterService';
+import { twitterService, TwitterConnection, TwitterConnectionStatus } from '../lib/twitterService';
 import { inspirationAccountService } from '../lib/inspirationAccountService';
 import { useAuth } from '../contexts/AuthContext';
 import { InspirationAccount } from '../types';
 import EnvSwitcher from './EnvSwitcher';
+import ConfirmationModal from './ConfirmationModal';
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -19,10 +20,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [twitterConnection, setTwitterConnection] = useState<TwitterConnection | null>(null);
+  const [twitterStatus, setTwitterStatus] = useState<TwitterConnectionStatus | null>(null);
   const [connectLoading, setConnectLoading] = useState(false);
   const [inspirationAccounts, setInspirationAccounts] = useState<InspirationAccount[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
+  const [showDisconnectModal, setShowDisconnectModal] = useState(false);
+  const [disconnectLoading, setDisconnectLoading] = useState(false);
   const { user } = useAuth();
   
   // Fetch inspiration accounts from API or use mock data
@@ -108,14 +112,27 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
         setConnectLoading(true);
         try {
           // Always try real API request first
-          const connection = await twitterService.getUserConnection();
-          setTwitterConnection(connection);
+          const status = await twitterService.getConnectionStatus();
+          setTwitterStatus(status);
+          
+          // Also get connection details if connected
+          if (status.is_twitter_connected) {
+            const connection = await twitterService.getUserConnection();
+            setTwitterConnection(connection);
+          } else {
+            setTwitterConnection(null);
+          }
         } catch (error) {
           console.error('Error checking Twitter connection:', error);
           // In mock mode, simulate connection status
           if (mockMode) {
             console.log('Mock mode - simulating Twitter connection status');
             setTwitterConnection(null); // Default to not connected for testing
+            setTwitterStatus({
+              is_twitter_connected: false,
+              is_authorized: false,
+              is_expired: false
+            });
           }
         } finally {
           setConnectLoading(false);
@@ -246,26 +263,51 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
       
       // 如果没有有效连接，启动新的OAuth流程
       const authUrl = await twitterService.getAuthUrl();
-      window.open(authUrl, '_blank', 'width=600,height=600');
+      const popup = window.open(authUrl, '_blank', 'width=600,height=600');
       
-      // Poll for connection status
-      const pollConnection = setInterval(async () => {
-        try {
-          const connection = await twitterService.getUserConnection();
-          if (connection) {
-            setTwitterConnection(connection);
-            clearInterval(pollConnection);
-            setActionLoading(false);
-          }
-        } catch (error) {
-          // Continue polling
+      // 监听来自弹出窗口的消息
+      const handleMessage = (event: MessageEvent) => {
+        // 验证消息来源
+        if (event.origin !== window.location.origin) {
+          return;
         }
-      }, 2000);
+        
+        if (event.data.type === 'TWITTER_AUTH_SUCCESS') {
+          // 授权成功，更新连接状态
+          setTwitterConnection(event.data.data);
+          setActionLoading(false);
+          setError(null);
+          window.removeEventListener('message', handleMessage);
+          console.log('Twitter authorization successful via popup');
+        } else if (event.data.type === 'TWITTER_AUTH_ERROR') {
+          // 授权失败
+          setError(event.data.error || 'Twitter authorization failed');
+          setActionLoading(false);
+          window.removeEventListener('message', handleMessage);
+          console.error('Twitter authorization failed:', event.data.error);
+        }
+      };
       
-      // Stop polling after 5 minutes
+      window.addEventListener('message', handleMessage);
+      
+      // 检查弹出窗口是否被关闭（用户手动关闭）
+      const checkClosed = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkClosed);
+          setActionLoading(false);
+          window.removeEventListener('message', handleMessage);
+          // 不设置错误，因为用户可能是主动取消的
+        }
+      }, 1000);
+      
+      // 5分钟后停止监听（超时保护）
       setTimeout(() => {
-        clearInterval(pollConnection);
+        clearInterval(checkClosed);
         setActionLoading(false);
+        window.removeEventListener('message', handleMessage);
+        if (!popup?.closed) {
+          setError('Authorization timeout. Please try again.');
+        }
       }, 300000);
       
     } catch (error) {
@@ -275,14 +317,65 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
     }
   };
 
-  const handleDisconnectTwitter = async () => {
+  const handleDisconnectTwitter = () => {
+    setShowDisconnectModal(true);
+  };
+
+  const confirmDisconnectTwitter = async () => {
     try {
-      setActionLoading(true);
+      setDisconnectLoading(true);
       setError(null);
       
       const result = await twitterService.disconnectTwitter();
       if (result.success) {
+        // 清除本地状态
         setTwitterConnection(null);
+        setTwitterStatus(null);
+        
+        // 重新检查连接状态以确保界面同步
+        const checkTwitterConnection = async () => {
+          if (currentStep === 'CONNECT') {
+            const mockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
+            
+            if (!user && !mockMode) {
+              console.log('No user and not in mock mode - skipping Twitter connection check');
+              return;
+            }
+
+            setConnectLoading(true);
+            try {
+              // Always try real API request first
+              const status = await twitterService.getConnectionStatus();
+              setTwitterStatus(status);
+              
+              // Also get connection details if connected
+              if (status.is_twitter_connected) {
+                const connection = await twitterService.getUserConnection();
+                setTwitterConnection(connection);
+              } else {
+                setTwitterConnection(null);
+              }
+            } catch (error) {
+              console.error('Error checking Twitter connection:', error);
+              // In mock mode, simulate connection status
+              if (mockMode) {
+                console.log('Mock mode - simulating Twitter connection status');
+                setTwitterConnection(null); // Default to not connected for testing
+                setTwitterStatus({
+                  is_twitter_connected: false,
+                  is_authorized: false,
+                  is_expired: false
+                });
+              }
+            } finally {
+              setConnectLoading(false);
+            }
+          }
+        };
+        
+        await checkTwitterConnection();
+        console.log('Twitter connection successfully disconnected');
+        setShowDisconnectModal(false);
       } else {
         setError(result.error || 'Failed to disconnect Twitter account');
       }
@@ -290,7 +383,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
       console.error('Failed to disconnect Twitter:', error);
       setError('Failed to disconnect Twitter account');
     } finally {
-      setActionLoading(false);
+      setDisconnectLoading(false);
     }
   };
 
@@ -357,10 +450,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 overflow-y-auto">
+      <div className="container mx-auto px-4 py-4 sm:py-8 min-h-full flex flex-col">
         {/* Progress Bar */}
-        <div className="mb-12">
+        <div className="mb-6 sm:mb-12">
           <div className="flex items-center justify-center">
             <div className="flex items-center space-x-2 sm:space-x-4 md:space-x-8 lg:space-x-12 max-w-5xl w-full px-4">
               {steps.map((step, index) => {
@@ -409,28 +502,28 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
         <div className="max-w-4xl mx-auto">
           {/* START Step */}
           {currentStep === 'START' && (
-            <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/30 p-8 md:p-12">
+            <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/30 p-4 sm:p-8 md:p-12">
               <div className="text-center">
-                <div className="mb-12">
-                  <h1 className="text-5xl font-bold text-gray-900 mb-6">
+                <div className="mb-6 sm:mb-12">
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4 sm:mb-6">
                     Introducing <span className="text-blue-600">X Pilot</span>
                   </h1>
-                  <p className="text-xl text-gray-600 mb-2">
+                  <p className="text-lg sm:text-xl text-gray-600 mb-2">
                     X Pilot is an AI-powered growth assistant for X (formerly Twitter).
                   </p>
-                  <p className="text-xl text-gray-600 mb-2">
+                  <p className="text-lg sm:text-xl text-gray-600 mb-2">
                     It helps <span className="text-blue-600 font-semibold">creators</span>, <span className="text-green-600 font-semibold">indie hackers</span>, and <span className="text-purple-600 font-semibold">operators</span> grow their accounts with
                   </p>
-                  <p className="text-xl text-gray-600">
+                  <p className="text-lg sm:text-xl text-gray-600">
                     automated engagement, content generation, and strategic planning
                   </p>
-                  <p className="text-xl text-gray-600 font-medium text-blue-600">
+                  <p className="text-lg sm:text-xl text-gray-600 font-medium text-blue-600">
                     — all without burning out.
                   </p>
                 </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12 max-w-6xl mx-auto">
-                <div className="bg-gradient-to-br from-[#4792E6]/10 to-[#4792E6]/5 backdrop-blur-sm p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[#4792E6]/20">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-12 max-w-6xl mx-auto">
+                <div className="bg-gradient-to-br from-[#4792E6]/10 to-[#4792E6]/5 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[#4792E6]/20">
                   <div className="mb-4">
                     <svg className="w-10 h-10 text-[#4792E6] mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -442,7 +535,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                   </p>
                 </div>
 
-                <div className="bg-gradient-to-br from-[#4792E6]/10 to-[#4792E6]/5 backdrop-blur-sm p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[#4792E6]/20">
+                <div className="bg-gradient-to-br from-[#4792E6]/10 to-[#4792E6]/5 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[#4792E6]/20">
                   <div className="mb-4">
                     <svg className="w-10 h-10 text-[#4792E6] mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -454,7 +547,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                   </p>
                 </div>
 
-                <div className="bg-gradient-to-br from-[#4792E6]/10 to-[#4792E6]/5 backdrop-blur-sm p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[#4792E6]/20">
+                <div className="bg-gradient-to-br from-[#4792E6]/10 to-[#4792E6]/5 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-[#4792E6]/20">
                   <div className="mb-4">
                     <svg className="w-10 h-10 text-[#4792E6] mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -470,7 +563,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                 <button
                   onClick={handleNextStep}
                   disabled={actionLoading}
-                  className="inline-flex items-center px-10 py-4 bg-gradient-to-br from-[#4792E6] to-[#4792E6]/80 text-white font-semibold text-xl rounded-xl hover:from-[#4792E6]/90 hover:to-[#4792E6]/70 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl border border-[#4792E6]/20"
+                  className="inline-flex items-center px-6 sm:px-10 py-3 sm:py-4 bg-gradient-to-br from-[#4792E6] to-[#4792E6]/80 text-white font-semibold text-lg sm:text-xl rounded-xl hover:from-[#4792E6]/90 hover:to-[#4792E6]/70 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl border border-[#4792E6]/20"
                 >
                   {actionLoading ? (
                     <Loader2 className="w-6 h-6 animate-spin mr-3" />
@@ -485,24 +578,27 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
 
           {/* CONNECT Step */}
           {currentStep === 'CONNECT' && (
-            <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/30 p-8 md:p-12">
+            <div className="bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/30 p-4 sm:p-8 md:p-12">
               <div className="text-center">
-                <div className="mb-8">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-blue-100 rounded-full">
-                      <XIcon className="h-8 w-8 text-blue-600" />
+                <div className="mb-6 sm:mb-8">
+                <div className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-6 space-y-4 sm:space-y-0">
+                  <div className="flex items-center space-x-3 sm:space-x-4">
+                    <div className="p-2 sm:p-3 bg-blue-100 rounded-full">
+                      <XIcon className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
                     </div>
                     <div className="text-left">
-                      <h1 className="text-2xl font-bold text-gray-900">Connect Your X Account</h1>
-                      <p className="text-gray-600">Link your X account to enable AI-powered growth features</p>
+                      <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Connect Your X Account</h1>
+                      <p className="text-sm sm:text-base text-gray-600">Link your X account to enable AI-powered growth features</p>
                     </div>
                   </div>
                   <div className={`px-3 py-1 rounded-full text-sm font-medium ${
                     connectLoading ? 'bg-blue-100 text-blue-800' :
-                    twitterConnection ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    twitterStatus?.is_authorized && twitterStatus?.is_expired ? 'bg-amber-100 text-amber-800' :
+                    twitterStatus?.is_twitter_connected ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                   }`}>
-                    {connectLoading ? 'Checking...' : (twitterConnection ? 'Connected' : 'Disconnected')}
+                    {connectLoading ? 'Checking...' : 
+                     twitterStatus?.is_authorized && twitterStatus?.is_expired ? 'Token Expired' :
+                     twitterStatus?.is_twitter_connected ? 'Connected' : 'Disconnected'}
                   </div>
                 </div>
 
@@ -510,29 +606,53 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
                   </div>
-                ) : twitterConnection ? (
+                ) : twitterStatus?.is_authorized ? (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-blue-900 mb-2">Account Information</h4>
-                        <p className="text-sm text-blue-700">Username: @{twitterConnection.platform_username}</p>
-                        <p className="text-sm text-blue-700">Connected: {new Date(twitterConnection.connected_at).toLocaleDateString()}</p>
+                    {twitterStatus.is_expired && (
+                      <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <AlertCircle className="w-5 h-5 text-amber-600" />
+                          <h4 className="font-medium text-amber-900">Token Expired</h4>
+                        </div>
+                        <p className="text-sm text-amber-700 mb-3">Your X connection token has expired. Please reconnect to continue using X features.</p>
+                        <button
+                          onClick={handleConnectTwitter}
+                          className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+                        >
+                          Reconnect X
+                        </button>
                       </div>
-                      <div className="bg-green-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-green-900 mb-2">API Access</h4>
-                        <p className="text-sm text-green-700">Status: Active</p>
-                        <p className="text-sm text-green-700">Permissions: Read and Post</p>
-                      </div>
-                    </div>
+                    )}
                     
-                    <div className="flex space-x-3">
-                      <button
-                        onClick={handleDisconnectTwitter}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                      >
-                        Disconnect X
-                      </button>
-                    </div>
+                    {twitterConnection && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className={`p-4 rounded-lg ${twitterStatus.is_expired ? 'bg-amber-50' : 'bg-blue-50'}`}>
+                          <h4 className={`font-medium mb-2 ${twitterStatus.is_expired ? 'text-amber-900' : 'text-blue-900'}`}>Account Information</h4>
+                          <p className={`text-sm ${twitterStatus.is_expired ? 'text-amber-700' : 'text-blue-700'}`}>Username: @{twitterConnection.platform_username}</p>
+                          <p className={`text-sm ${twitterStatus.is_expired ? 'text-amber-700' : 'text-blue-700'}`}>Connected: {new Date(twitterConnection.connected_at).toLocaleDateString()}</p>
+                        </div>
+                        <div className={`p-4 rounded-lg ${twitterStatus.is_expired ? 'bg-red-50' : 'bg-green-50'}`}>
+                          <h4 className={`font-medium mb-2 ${twitterStatus.is_expired ? 'text-red-900' : 'text-green-900'}`}>API Access</h4>
+                          <p className={`text-sm ${twitterStatus.is_expired ? 'text-red-700' : 'text-green-700'}`}>
+                            Status: {twitterStatus.is_expired ? 'Expired' : 'Active'}
+                          </p>
+                          <p className={`text-sm ${twitterStatus.is_expired ? 'text-red-700' : 'text-green-700'}`}>
+                            Permissions: {twitterStatus.is_expired ? 'None' : 'Read and Post'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {!twitterStatus.is_expired && (
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={handleDisconnectTwitter}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          Disconnect X
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -568,9 +688,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                     
                     <button
                       onClick={handleConnectTwitter}
-                      className="w-full bg-black text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors font-medium"
+                      disabled={actionLoading}
+                      className="w-full bg-black text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                     >
-                      Connect X
+                      {actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                      <span>{actionLoading ? 'Connecting...' : 'Connect X'}</span>
                     </button>
                   </div>
                 )}
@@ -800,6 +922,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
       
       {/* 环境切换器 */}
       <EnvSwitcher />
+
+      {/* Disconnect Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDisconnectModal}
+        onClose={() => setShowDisconnectModal(false)}
+        onConfirm={confirmDisconnectTwitter}
+        title="Disconnect X Account"
+        message="Are you sure you want to disconnect your X (Twitter) account? This will stop all automated activities and you'll need to reconnect to use XPilot features."
+        confirmText="Disconnect"
+        cancelText="Cancel"
+        isLoading={disconnectLoading}
+      />
     </div>
   );
 };

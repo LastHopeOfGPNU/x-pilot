@@ -1,6 +1,16 @@
 import { supabase } from './supabase';
 import { User } from '@supabase/supabase-js';
 
+// Twitter连接状态响应接口
+export interface TwitterConnectionStatus {
+  is_twitter_connected: boolean;
+  is_authorized: boolean;
+  is_expired: boolean;
+  connection_details: TwitterConnection | null;
+  total_connections: number;
+  debug_info?: any;
+}
+
 // Twitter连接信息接口
 export interface TwitterConnection {
   id?: string;
@@ -134,25 +144,38 @@ class TwitterService {
   // 处理OAuth回调
   async handleCallback(code: string, state: string): Promise<{ success: boolean; data?: TwitterConnection; error?: string }> {
     try {
-      // 验证state
-      const storedState = localStorage.getItem('twitter_oauth_state');
+      // 验证state - 添加重试机制解决弹出窗口中localStorage同步延迟问题
+      let storedState = localStorage.getItem('twitter_oauth_state');
+      let retryCount = 0;
+      const maxRetries = 5;
+      
+      // 如果第一次获取失败，重试几次（解决弹出窗口localStorage同步延迟问题）
+      while (!storedState && retryCount < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 200)); // 等待200ms
+        storedState = localStorage.getItem('twitter_oauth_state');
+        retryCount++;
+      }
 
       if (!storedState) {
-
-        throw new Error('OAuth state not found. Please restart the authorization process.');
+        throw new Error('Authorization session not found. Please restart the connection process.');
       }
 
       if (storedState !== state) {
-
-        throw new Error('Invalid state parameter. Please restart the authorization process.');
+        throw new Error('Authorization verification failed. Please restart the connection process.');
       }
 
-      // 获取code_verifier
-      const codeVerifier = localStorage.getItem('twitter_code_verifier');
+      // 获取code_verifier - 同样添加重试机制
+      let codeVerifier = localStorage.getItem('twitter_code_verifier');
+      retryCount = 0;
+      
+      while (!codeVerifier && retryCount < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        codeVerifier = localStorage.getItem('twitter_code_verifier');
+        retryCount++;
+      }
 
       if (!codeVerifier) {
-
-        throw new Error('Code verifier not found. Please restart the authorization process.');
+        throw new Error('Authorization verification code not found. Please restart the connection process.');
       }
 
       // 清理localStorage
@@ -302,15 +325,61 @@ class TwitterService {
       return null;
     }
   }
+
+  // 获取详细的连接状态信息
+  async getConnectionStatus(): Promise<TwitterConnectionStatus | null> {
+    try {
+      // 先尝试获取当前session
+      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        return null;
+      }
+      
+      if (!currentSession) {
+        return null;
+      }
+      
+      // 获取用户信息
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        return null;
+      }
+
+      // 调用edge function检查Twitter连接
+      const { data, error } = await supabase.functions.invoke('check-twitter-connection', {
+        headers: {
+          Authorization: `Bearer ${currentSession.access_token}`,
+        },
+      });
+
+      if (error) {
+        return null;
+      }
+
+      // 返回完整的状态信息
+      return data as TwitterConnectionStatus;
+    } catch (error) {
+      return null;
+    }
+  }
   
   // 断开Twitter连接
   async disconnectTwitter(): Promise<{ success: boolean; error?: string }> {
     try {
-      // 获取当前认证用户和session
-      const { data: { user, session }, error: userError } = await supabase.auth.getUser();
+      // 获取当前认证用户
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       
-      if (userError || !user || !session) {
+      if (userError || !user) {
         return { success: false, error: '用户未登录' };
+      }
+
+      // 获取session来获取access_token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        return { success: false, error: '无法获取用户会话' };
       }
 
       // 调用edge function断开Twitter连接

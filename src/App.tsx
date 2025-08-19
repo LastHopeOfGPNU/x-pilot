@@ -21,6 +21,7 @@ import Onboarding from './components/Onboarding';
 
 import { apiConfigService } from './lib/apiConfigService';
 import { onboardingService } from './lib/onboardingService';
+import { devConfigService } from './lib/devConfigService';
 
 // 定义MarketingStrategy类型
 export interface MarketingStrategy {
@@ -74,6 +75,7 @@ const AppContent: React.FC = () => {
   const [isAIChatExpanded, setIsAIChatExpanded] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [apiBaseUrl, setApiBaseUrl] = useState<string>(apiConfigService.getApiBaseUrl());
+  const [showCopilotDevConsole, setShowCopilotDevConsole] = useState(devConfigService.getShowCopilotDevConsole());
 
   // 使用useCallback避免onComplete函数重复创建 - 必须在所有条件渲染之前
   const handleOnboardingComplete = useCallback(() => {
@@ -141,6 +143,19 @@ const AppContent: React.FC = () => {
     };
   }, []);
 
+  // 监听开发配置变更
+  useEffect(() => {
+    const handleDevConfigChange = (config: any) => {
+      setShowCopilotDevConsole(config.showCopilotDevConsole);
+    };
+    
+    devConfigService.addListener(handleDevConfigChange);
+    
+    return () => {
+      devConfigService.removeListener(handleDevConfigChange);
+    };
+  }, []);
+
   // 检查onboarding状态
   const checkOnboardingStatus = useCallback(async () => {
       const isOnboardingMockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
@@ -194,7 +209,7 @@ const AppContent: React.FC = () => {
 
   // Calculate available space for intelligent layout
   const sidebarWidth = 256; // w-64 = 16rem = 256px
-  const aiChatWidth = isAIChatExpanded ? Math.min(Math.max(windowWidth * 0.55, 600), 800) : 320; // Expanded: 55vw (min 600px, max 800px), Normal: 320px
+  const aiChatWidth = isAIChatExpanded ? Math.min(Math.max(windowWidth * 0.45, 600), 900) : Math.min(Math.max(windowWidth * 0.25, 320), 500); // Expanded: 45vw (min 600px, max 900px), Normal: 25vw (min 320px, max 500px)
   const remainingWidth = windowWidth - sidebarWidth - aiChatWidth;
   const canShowBothPanels = remainingWidth >= 800; // Need at least 800px for both panels
 
@@ -346,7 +361,7 @@ const AppContent: React.FC = () => {
     <CopilotKit 
       runtimeUrl={`${apiBaseUrl}/copilotkit`}
       agent='chat_agent'
-      showDevConsole={import.meta.env.DEV}
+      showDevConsole={showCopilotDevConsole}
       publicLicenseKey={import.meta.env.VITE_COPILOTKIT_PUBLIC_LICENSE_KEY}
     >
       <LayoutContext.Provider value={{ isAIChatExpanded, setIsAIChatExpanded }}>

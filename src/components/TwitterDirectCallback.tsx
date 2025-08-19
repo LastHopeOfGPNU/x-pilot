@@ -54,20 +54,42 @@ export const TwitterDirectCallback: React.FC = () => {
           setStatus('success');
           setMessage('Twitter账户授权成功！');
           
-          // 开始倒计时跳转
-          const timer = setInterval(() => {
-            setCountdown(prev => {
-              if (prev <= 1) {
-                clearInterval(timer);
-                // 跳转到主应用，并通过 URL 参数指示显示 Profile 页面
-                navigate('/?section=profile&tab=twitter-auth');
-                return 0;
-              }
-              return prev - 1;
-            });
-          }, 1000);
+          // 检查是否在弹出窗口中
+          const isPopup = window.opener && window.opener !== window;
           
-          return () => clearInterval(timer);
+          if (isPopup) {
+            // 在弹出窗口中，通知父窗口并关闭
+            try {
+              // 通知父窗口授权成功
+              window.opener.postMessage({
+                type: 'TWITTER_AUTH_SUCCESS',
+                data: result.data
+              }, window.location.origin);
+              
+              // 延迟关闭窗口，让用户看到成功消息
+              setTimeout(() => {
+                window.close();
+              }, 1500);
+            } catch (error) {
+              console.error('Failed to communicate with parent window:', error);
+              // 如果无法通信，则正常跳转
+              navigate('/?section=profile&tab=twitter-auth');
+            }
+          } else {
+            // 不在弹出窗口中，正常倒计时跳转
+            const timer = setInterval(() => {
+              setCountdown(prev => {
+                if (prev <= 1) {
+                  clearInterval(timer);
+                  navigate('/?section=profile&tab=twitter-auth');
+                  return 0;
+                }
+                return prev - 1;
+              });
+            }, 1000);
+            
+            return () => clearInterval(timer);
+           }
         } else {
           throw new Error(result.error || 'Connection failed, please try again');
         }
@@ -79,12 +101,27 @@ export const TwitterDirectCallback: React.FC = () => {
         // 提供更友好的错误信息
         if (errorMessage.includes('用户未登录')) {
           setMessage('请先登录应用，然后再连接Twitter账户');
-        } else if (errorMessage.includes('OAuth state not found') || errorMessage.includes('OAuth会话已过期')) {
-          setMessage('授权会话已过期，请重新开始连接流程');
-        } else if (errorMessage.includes('Invalid state parameter')) {
-          setMessage('Authorization verification failed, please restart the connection process');
+        } else if (errorMessage.includes('Authorization session not found')) {
+          setMessage('授权会话未找到，请重新开始连接流程');
+        } else if (errorMessage.includes('Authorization verification failed')) {
+          setMessage('授权验证失败，请重新开始连接流程');
+        } else if (errorMessage.includes('Authorization verification code not found')) {
+          setMessage('授权验证码未找到，请重新开始连接流程');
         } else if (errorMessage.includes('请求超时')) {
           setMessage('Network request timeout, please check your network connection and try again');
+        
+        // 如果在弹出窗口中发生错误，也要通知父窗口
+        const isPopup = window.opener && window.opener !== window;
+        if (isPopup) {
+          try {
+            window.opener.postMessage({
+              type: 'TWITTER_AUTH_ERROR',
+              error: errorMessage
+            }, window.location.origin);
+          } catch (e) {
+            console.error('Failed to communicate error to parent window:', e);
+          }
+        }
         } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('network')) {
           setMessage('Network connection failed, please check your network and try again');
         } else if (errorMessage.includes('invalid input syntax for type uuid')) {
