@@ -81,7 +81,7 @@ const AutoReplyCard: React.FC<AutoReplyCardProps> = ({
 
   return (
     <div 
-      className={`bg-white rounded-lg shadow-sm transition-all duration-200 cursor-pointer max-w-2xl w-full ${
+      className={`bg-white rounded-lg shadow-sm transition-all duration-200 cursor-pointer w-full ${
         isSelected 
           ? 'bg-blue-50 border-2 border-blue-500 ring-2 ring-blue-200 shadow-lg' 
           : 'border border-gray-200 hover:shadow-md'

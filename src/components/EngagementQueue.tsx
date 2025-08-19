@@ -599,7 +599,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
 
   // Engagement display logic (formerly Activity Queue)
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg border border-gray-200 shadow-sm min-w-[400px]">
+    <div className="flex flex-col h-full bg-white rounded-lg border border-gray-200 shadow-sm w-full max-w-2xl">
       {/* Header */}
       <div className="flex-shrink-0 p-4 sm:p-6 border-b border-gray-200">
         <h2 className="mb-4 text-xl font-semibold text-gray-900">{title}</h2>
