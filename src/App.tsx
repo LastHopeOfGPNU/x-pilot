@@ -389,8 +389,8 @@ const AppContent: React.FC = () => {
             {/* Activity Queue / Config / Profile / Dashboard / Marketing Strategy */}
             <div className={`${
               showDashboard || showProfile ? 'w-full' : 
-              canShowBothPanels ? 'w-1/2' : 'flex-1'
-            } min-w-0 overflow-hidden`}>
+              canShowBothPanels ? 'w-auto' : 'flex-1'
+            } min-w-[500px] overflow-hidden`}>
               {showDashboard ? (
                 <Dashboard onNavigate={handleDashboardNavigate} />
               ) : showProfile ? (
