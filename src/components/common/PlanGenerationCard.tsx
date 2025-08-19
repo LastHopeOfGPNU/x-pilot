@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, Clock, Play, AlertCircle, Calendar, Target, TrendingUp, ChevronDown, ChevronUp, FileText, Zap } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { Mermaid } from './Mermaid';
+import { Mermaid } from '../common/Mermaid';
 
 interface PlanStep {
   id: string;

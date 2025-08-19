@@ -1,9 +1,9 @@
 import React from 'react';
 import { MessageSquare, Heart, Repeat2, Bookmark, ExternalLink, Clock, User, Bot, Calendar, Tag, TrendingUp, Star, Users, Eye, MapPin, Link, MessageCircle, Share, BarChart3, Target, Zap, CheckCircle, AlertCircle, ChevronRight, FileText, Lightbulb, TrendingDown, Activity, Globe, Sparkles, Copy, Edit3, Trash2, Send } from 'lucide-react';
-import { Card, InspirationAccount, Post } from '../types';
-import { ConfigItem } from './Config';
-import { VerifiedBadge, formatNumber } from '../utils/cardUtils';
-import { MarketingStrategy as MarketingStrategyType } from '../App';
+import { Card, InspirationAccount, Post } from '../../types';
+import { ConfigItem } from '../config/Config';
+import { VerifiedBadge, formatNumber } from '../../utils/cardUtils';
+import { MarketingStrategy as MarketingStrategyType } from '../../App';
 
 // 定义本地数据类型
 interface QueueItem {

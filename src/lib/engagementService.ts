@@ -1,4 +1,4 @@
-import { Card } from '../types';
+import { Card } from '../types/index';
 import { supabase } from './supabase';
 import { apiConfigService } from './apiConfigService';
 
@@ -118,10 +118,8 @@ class EngagementService {
       }
 
       const data = await response.json();
-      console.log('API Response:', data);
       return data;
     } catch (error) {
-      console.error('Error in getEngagements:', error);
       throw error;
     }
   }

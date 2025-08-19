@@ -1,6 +1,6 @@
 import React from 'react';
 import { Heart, Repeat2, MessageSquare } from 'lucide-react';
-import { Card } from '../types';
+import { Card } from '../../types';
 import { 
   getCardIcon, 
   getCardBorderColor, 
@@ -8,7 +8,7 @@ import {
   VerifiedBadge, 
   StatusIndicator,
   formatNumber 
-} from '../utils/cardUtils';
+} from '../../utils/cardUtils';
 
 interface CardItemProps {
   card: Card;

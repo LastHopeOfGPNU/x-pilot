@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Calendar, MapPin, Link, Star, Settings, Edit3, Check, X, Camera, Shield, Bell, CreditCard, Users, Activity, TrendingUp, MessageSquare, BarChart3, Clock, Gift, AlertCircle, LogOut, Loader2 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { twitterService, TwitterConnection, TwitterConnectionStatus } from '../lib/twitterService';
-import ConfirmationModal from './ConfirmationModal';
+import { useAuth } from '../../contexts/AuthContext';
+import { twitterService, TwitterConnection, TwitterConnectionStatus } from '../../lib/twitterService';
+import ConfirmationModal from '../common/ConfirmationModal';
 
 interface ProfileProps {
   onClose?: () => void;

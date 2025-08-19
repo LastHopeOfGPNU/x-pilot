@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Settings, Globe, Server, RotateCcw, Terminal } from 'lucide-react';
-import { apiConfigService } from '../lib/apiConfigService';
-import { devConfigService } from '../lib/devConfigService';
-import { supabase } from '../lib/supabase';
+import { apiConfigService } from '../../lib/apiConfigService';
+import { devConfigService } from '../../lib/devConfigService';
+import { supabase } from '../../lib/supabase';
 
 interface EnvSwitcherProps {
   className?: string;

@@ -1,86 +1,38 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Send, Zap, ChevronLeft, ChevronRight, Square, Loader2, AlertCircle, Wifi, WifiOff, Maximize2, Minimize2, Plus, Copy, User, UserCircle } from 'lucide-react';
+import { Send, Zap, ChevronLeft, ChevronRight, Square, AlertCircle, Maximize2, Minimize2, Plus, User} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import PlanGenerationCard from './PlanGenerationCard';
-import SimplePlanCard from './SimplePlanCard';
-import ExecutionStepsCard from './ExecutionStepsCard';
-import { supabase } from '../lib/supabase';
-import { apiConfigService } from '../lib/apiConfigService';
-import { useCopilotAction, useCopilotReadable, useCopilotChat, useCopilotContext } from '@copilotkit/react-core';
-import { TextMessage, MessageRole } from '@copilotkit/runtime-client-gql';
-import { useAuth } from '../contexts/AuthContext';
 
-// 定义消息类型
-interface Message {
-  id: string;
-  content: string;
-  role: 'user' | 'assistant';
-  timestamp?: string;
-  planData?: PlanData;
-}
+import StatusMessage from '../common/StatusMessage';
+import CapabilitySelector from './CapabilitySelector';
+import { useCopilotChatHeadless_c, useCopilotContext } from '@copilotkit/react-core';
+import { useAIAssistantActions } from './actions';
+import { useAuth } from '../../contexts/AuthContext';
+import { 
+  Message, 
+  AIAssistantProps
+} from '../../types';
+import { 
+  CAPABILITY_OPTIONS, 
+  generateThreadId,
+  generateMessageId 
+} from '../../constants/aiAssistant';
+import {
+  getUserDisplayName,
+  findFirstEnabledCapabilityIndex,
+  handleAtSymbolLogic,
+  updateInputAfterCapabilitySelect,
+  getNextCapabilityIndex,
+  createStatusMessage,
+} from '../../utils/aiAssistantUtils';
 
-// 定义计划数据类型
-interface PlanData {
-  id: string;
-  title: string;
-  description?: string;
-  steps: PlanStep[];
-  markdownContent?: string;
-  mermaidDiagram?: string;
-  status: 'generating' | 'ready' | 'confirmed' | 'executing' | 'completed';
-  progress?: number;
-}
-
-interface PlanStep {
-  id: string;
-  stepNumber: number;
-  title: string;
-  description: string;
-  estimatedTime?: string;
-  priority?: 'high' | 'medium' | 'low';
-  status?: 'pending' | 'in-progress' | 'completed' | 'blocked';
-}
-
-interface AIAssistantProps {
-  onExpandedChange?: (expanded: boolean) => void;
-}
-
-// 定义后端请求结构
-interface BackendRequest {
-  state: any[];
-  tools: any[];
-  context: any[];
-  forwardedProps: Record<string, any>;
-  messages: Array<{
-    content: string;
-    role: string;
-    id: string;
-  }>;
-  runId: string;
-  threadId: string;
-}
-
-// Capability selector options
-const CAPABILITY_OPTIONS = [
-  { id: 'post', label: '@post', description: 'Vibe Generation Post', disabled: true },
-  { id: 'thread', label: '@thread', description: 'Vibe Generation Thread', disabled: true },
-  { id: 'strategy', label: '@strategy', description: 'Vibe Operation Strategy', disabled: true },
-  { id: 'reply', label: '@reply', description: 'Vibe Auto Reply', disabled: false }
-];
+// 类型定义已移至 ../types/aiAssistant.ts
+// 常量定义已移至 ../constants/aiAssistant.ts
 
 const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const { user } = useAuth();
   
   // Get user display name - memoized to prevent unnecessary re-renders
-  const userDisplayName = useMemo(() => {
-    if (user?.user_metadata?.full_name) {
-      return user.user_metadata.full_name;
-    }
-    if (user?.email) {
-      return user.email.split('@')[0];
-    }
-    return 'You';
-  }, [user?.user_metadata?.full_name, user?.email]);
+  const userDisplayName = useMemo(() => getUserDisplayName(user), [user]);
   
   const [inputValue, setInputValue] = useState('');
   const [isMinimized, setIsMinimized] = useState(false);
@@ -94,116 +46,40 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const [selectedCapability, setSelectedCapability] = useState<typeof CAPABILITY_OPTIONS[0] | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [threadId, setThreadId] = useState(() => `thread-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+  const [threadId, setThreadId] = useState(() => generateThreadId());
   const [retryCount, setRetryCount] = useState(0);
   const [shouldStopRetry, setShouldStopRetry] = useState(false);
   // CopilotKit integration - no need for manual retry logic
-  const [currentPlan, setCurrentPlan] = useState<PlanData | null>(null);
-  const [planGenerationBuffer, setPlanGenerationBuffer] = useState<string>('');
-  const [simplePlan, setSimplePlan] = useState<{ steps: string[] } | null>(null);
-  const [executionSteps, setExecutionSteps] = useState<Array<{
-    step: string;
-    status: 'pending' | 'running' | 'completed' | 'failed';
-    description: string;
-    details?: string;
-  }> | null>(null);
 
   // CopilotKit chat integration
-  const { appendMessage, isLoading: copilotLoading, visibleMessages, reset, stopGeneration } = useCopilotChat();
+  const { messages: copilotMessages, sendMessage, isLoading: copilotLoading, reset, stopGeneration } = useCopilotChatHeadless_c();
   
   // CopilotKit context for thread management
   const { setThreadId: setCopilotThreadId } = useCopilotContext();
 
-  // CopilotKit Integration
-  useCopilotReadable({
-    description: "Current conversation messages and context",
-    value: {
-      messages,
-      currentPlan,
-      selectedCapability,
-      threadId
+  // AI Assistant Actions integration
+  const { agentStateRender } = useAIAssistantActions({
+    currentConversation: {
+      messages: copilotMessages,
+      threadId,
+      selectedCapability
+    },
+    selectedCapability: selectedCapability?.name || null,
+    setSelectedCapability: (capability) => {
+      const capabilityOption = CAPABILITY_OPTIONS.find(opt => opt.name === capability);
+      setSelectedCapability(capabilityOption || null);
+    },
+    onPlanGenerated: (plan) => {
+      console.log('Plan generated:', plan);
+      // 这里可以添加计划生成后的处理逻辑
+    },
+    onPlanStatusUpdated: (planId, status) => {
+      console.log('Plan status updated:', planId, status);
+      // 这里可以添加计划状态更新后的处理逻辑
     }
   });
 
-  useCopilotAction({
-    name: "generatePlan",
-    description: "Generate a detailed plan based on user requirements",
-    parameters: [
-      {
-        name: "title",
-        type: "string",
-        description: "The title of the plan"
-      },
-      {
-        name: "description",
-        type: "string",
-        description: "Description of what the plan will accomplish"
-      },
-      {
-        name: "steps",
-        type: "object[]",
-        description: "Array of plan steps with details"
-      }
-    ],
-    handler: async ({ title, description, steps }) => {
-      const newPlan: PlanData = {
-        id: generateId(),
-        title,
-        description,
-        steps: steps.map((step: any, index: number) => ({
-          id: generateId(),
-          stepNumber: index + 1,
-          title: step.title || `Step ${index + 1}`,
-          description: step.description || '',
-          priority: step.priority || 'medium',
-          status: 'pending'
-        })),
-        status: 'ready',
-        progress: 0
-      };
-      setCurrentPlan(newPlan);
-      return `Plan "${title}" has been generated with ${steps.length} steps.`;
-    }
-  });
 
-  useCopilotAction({
-    name: "updatePlanStatus",
-    description: "Update the status of the current plan",
-    parameters: [
-      {
-        name: "status",
-        type: "string",
-        description: "New status for the plan (ready, confirmed, executing, completed)"
-      }
-    ],
-    handler: async ({ status }) => {
-      if (currentPlan) {
-        setCurrentPlan({ ...currentPlan, status: status as any });
-        return `Plan status updated to ${status}`;
-      }
-      return "No active plan to update";
-    }
-  });
-
-  useCopilotAction({
-    name: "setSelectedCapability",
-    description: "Set the selected capability for the conversation",
-    parameters: [
-      {
-        name: "capability",
-        type: "string",
-        description: "The capability to select (post, thread, strategy, reply)"
-      }
-    ],
-    handler: async ({ capability }) => {
-      const option = CAPABILITY_OPTIONS.find(opt => opt.value === capability);
-      if (option && !option.disabled) {
-        setSelectedCapability(option);
-        return `Selected capability: ${option.label}`;
-      }
-      return `Capability ${capability} not found or disabled`;
-    }
-  });
   
   // Notify parent component when expanded state changes
   useEffect(() => {
@@ -215,20 +91,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 生成唯一ID
-  const generateId = () => `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-  // 获取认证头
-  const getAuthHeaders = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      throw new Error('用户未登录');
-    }
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`
-    };
-  };
+  // ID生成函数已移至 ../constants/aiAssistant.ts
 
   // 处理容器焦点
   const handleContainerFocus = () => {
@@ -257,8 +120,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     // 直接显示选择器，不在输入框中添加@符号
     setShowCapabilitySelector(true);
     // 找到第一个未禁用的选项
-    const firstEnabledIndex = CAPABILITY_OPTIONS.findIndex(option => !option.disabled);
-    setSelectedCapabilityIndex(firstEnabledIndex !== -1 ? firstEnabledIndex : 0);
+    setSelectedCapabilityIndex(findFirstEnabledCapabilityIndex());
     // 设置选择器位置在输入框上方
     setSelectorPosition({ top: -280, left: 0 });
     
@@ -274,39 +136,14 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const handleInputChange = (value: string) => {
     setInputValue(value);
     
-    const lastAtIndex = value.lastIndexOf('@');
+    const result = handleAtSymbolLogic(value);
     
-    if (lastAtIndex !== -1) {
-      // Get text after the last @
-      const textAfterAt = value.substring(lastAtIndex + 1);
-      
-      // Check if there's a space or newline after @, which should close the selector
-      if (textAfterAt.includes(' ') || textAfterAt.includes('\n')) {
-        setShowCapabilitySelector(false);
-      } else {
-        // Show selector when @ is present and no space/newline after it
-        setShowCapabilitySelector(true);
-        // 找到第一个未禁用的选项
-        const firstEnabledIndex = CAPABILITY_OPTIONS.findIndex(option => !option.disabled);
-        setSelectedCapabilityIndex(firstEnabledIndex !== -1 ? firstEnabledIndex : 0);
-        setAtTriggerPosition(lastAtIndex);
-        
-        // 设置选择器位置在输入框下方
-        setSelectorPosition({ top: 50, left: 0 });
-        
-        // If there's text after @, filter options
-        if (textAfterAt.length > 0) {
-          const filteredOptions = CAPABILITY_OPTIONS.filter(option =>
-            option.label.toLowerCase().includes(textAfterAt.toLowerCase())
-          );
-          // Only show selector if there are matching options
-          if (filteredOptions.length === 0) {
-            setShowCapabilitySelector(false);
-          }
-        }
-      }
+    if (result.shouldShowSelector) {
+      setShowCapabilitySelector(true);
+      setSelectedCapabilityIndex(findFirstEnabledCapabilityIndex());
+      setAtTriggerPosition(result.atPosition);
+      setSelectorPosition({ top: -280, left: 0 });
     } else {
-      // No @ symbol found, hide selector
       setShowCapabilitySelector(false);
     }
   };
@@ -321,24 +158,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     // 设置选中的能力，显示在输入框上方
     setSelectedCapability(capability);
     
-    // 如果输入框中有@符号，则删除它
-    const lastAtIndex = inputValue.lastIndexOf('@');
-    if (lastAtIndex !== -1) {
-      const beforeAt = inputValue.substring(0, lastAtIndex);
-      const afterAt = inputValue.substring(lastAtIndex + 1);
-      
-      // 找到@后面单词的结束位置
-      const spaceIndex = afterAt.indexOf(' ');
-      const newlineIndex = afterAt.indexOf('\n');
-      let endIndex = afterAt.length;
-      
-      if (spaceIndex !== -1) endIndex = Math.min(endIndex, spaceIndex);
-      if (newlineIndex !== -1) endIndex = Math.min(endIndex, newlineIndex);
-      
-      const afterWord = afterAt.substring(endIndex);
-      const newValue = beforeAt + afterWord;
-      setInputValue(newValue);
-    }
+    // 更新输入框内容，移除@符号
+    const newValue = updateInputAfterCapabilitySelect(inputValue);
+    setInputValue(newValue);
     
     setShowCapabilitySelector(false);
   };
@@ -350,23 +172,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault();
-          setSelectedCapabilityIndex(prev => {
-            let newIndex = prev;
-            do {
-              newIndex = newIndex > 0 ? newIndex - 1 : CAPABILITY_OPTIONS.length - 1;
-            } while (CAPABILITY_OPTIONS[newIndex].disabled && newIndex !== prev);
-            return newIndex;
-          });
+          setSelectedCapabilityIndex(prev => getNextCapabilityIndex(prev, 'up'));
           return;
         case 'ArrowDown':
           e.preventDefault();
-          setSelectedCapabilityIndex(prev => {
-            let newIndex = prev;
-            do {
-              newIndex = newIndex < CAPABILITY_OPTIONS.length - 1 ? newIndex + 1 : 0;
-            } while (CAPABILITY_OPTIONS[newIndex].disabled && newIndex !== prev);
-            return newIndex;
-          });
+          setSelectedCapabilityIndex(prev => getNextCapabilityIndex(prev, 'down'));
           return;
         case 'Enter':
           e.preventDefault();
@@ -394,86 +204,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     }
   };
 
-  // Plan management functions
-  const handlePlanConfirm = () => {
-    if (currentPlan) {
-      setCurrentPlan({ ...currentPlan, status: 'confirmed' });
-    }
-  };
 
-  const handlePlanExecute = () => {
-    if (currentPlan) {
-      setCurrentPlan({ ...currentPlan, status: 'executing' });
-      // Simulate execution progress
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 10;
-        if (currentPlan) {
-          setCurrentPlan(prev => prev ? { ...prev, progress } : null);
-        }
-        if (progress >= 100) {
-          clearInterval(interval);
-          setCurrentPlan(prev => prev ? { ...prev, status: 'completed' } : null);
-        }
-      }, 500);
-    }
-  };
 
-  const handlePlanCancel = () => {
-    setCurrentPlan(null);
-  };
-
-  const handlePlanEdit = () => {
-    if (currentPlan) {
-      setCurrentPlan({ ...currentPlan, status: 'ready' });
-    }
-  };
-
-  // 渲染状态消息（网络重试、错误和用户停止）
-  const renderStatusMessage = (content: string) => {
-    const isNetworkError = content.includes('Network connection failed') || content.includes('网络异常');
-    const isRetrying = content.includes('Network retry');
-    const isUserStopped = content.includes('Response stopped by user') || content.includes('用户中止响应');
-    
-    if (isNetworkError) {
-      return (
-        <div className="flex justify-center mb-4">
-          <div className="flex items-center p-3 space-x-2 max-w-md bg-red-50 rounded-lg border border-red-200">
-            <AlertCircle size={16} className="flex-shrink-0 text-red-500" />
-            <span className="text-sm font-medium text-red-700">{content}</span>
-          </div>
-        </div>
-      );
-    }
-    
-    if (isRetrying) {
-      return (
-        <div className="flex justify-center mb-4">
-          <div className="flex items-center p-3 space-x-2 max-w-md bg-blue-50 rounded-lg border border-blue-200">
-            <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-            </div>
-            <span className="text-sm font-medium text-blue-700">{content}</span>
-          </div>
-        </div>
-      );
-    }
-    
-    if (isUserStopped) {
-      return (
-        <div className="flex justify-center mb-4">
-          <div className="flex items-center p-3 space-x-2 max-w-md bg-orange-50 rounded-lg border border-orange-200">
-            <Square size={16} className="flex-shrink-0 text-orange-500" />
-            <span className="text-sm font-medium text-orange-700">{content}</span>
-          </div>
-        </div>
-      );
-    }
-    
-    return null;
-  };
+  // 状态消息渲染逻辑已移至 StatusMessage 组件
 
   // 停止响应和重试
   const handleStopResponse = () => {
@@ -483,12 +216,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       setRetryCount(0); // 重置重试计数
       
       // Add user stop message
-      const stopMessage: Message = {
-        id: generateId(),
-        content: 'Response stopped by user',
-        role: 'assistant',
-        timestamp: new Date().toISOString()
-      };
+      const stopMessage = createStatusMessage('Response stopped by user');
       setMessages(prev => [...prev, stopMessage]);
     }
     if (copilotLoading) {
@@ -500,12 +228,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       }
       
       // Add user stop message for CopilotKit responses
-      const stopMessage: Message = {
-        id: generateId(),
-        content: 'Response stopped by user',
-        role: 'assistant',
-        timestamp: new Date().toISOString()
-      };
+      const stopMessage = createStatusMessage('Response stopped by user');
       setMessages(prev => [...prev, stopMessage]);
     }
   };
@@ -533,12 +256,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
 
     try {
       // Send message to CopilotKit
-      await appendMessage(
-        new TextMessage({
-          role: MessageRole.User,
-          content: messageToSend,
-        })
-      );
+      await sendMessage({
+        id: generateMessageId(),
+        role: 'user',
+        content: messageToSend,
+      });
       
       // Success - reset retry count
       setRetryCount(0);
@@ -549,12 +271,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       // Check if we should retry (max 4 retries = 5 total attempts)
       if (currentRetryCount < 4 && !shouldStopRetry) {
         // Add retry status message to local messages
-        const retryMessage: Message = {
-          id: generateId(),
-          content: `Network retry (${currentRetryCount + 1}/5)...`,
-          role: 'assistant',
-          timestamp: new Date().toISOString()
-        };
+        const retryMessage = createStatusMessage(`Network retry (${currentRetryCount + 1}/5)...`);
         setMessages(prev => [...prev, retryMessage]);
         
         // Update retry count
@@ -571,12 +288,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       }
       
       // Max retries reached or stopped - show error
-      const errorMessage: Message = {
-        id: generateId(),
-        content: 'Network connection failed, please check your network and try again',
-        role: 'assistant',
-        timestamp: new Date().toISOString()
-      };
+      const errorMessage = createStatusMessage('Network connection failed, please check your network and try again');
       setMessages(prev => [...prev, errorMessage]);
       setError('Network connection failed, please check your network and try again');
       
@@ -612,11 +324,6 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     setInputValue('');
     // 清除选中的能力
     setSelectedCapability(null);
-    // 清除计划相关状态
-    setCurrentPlan(null);
-    setPlanGenerationBuffer('');
-    setSimplePlan(null);
-    setExecutionSteps(null);
     // 更新本地threadId状态
     setThreadId(newThreadId);
   };
@@ -627,39 +334,24 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   };
 
   // 转换CopilotKit消息格式，保持用户和AI消息的对应关系
-  const convertVisibleMessages = (visibleMessages: any[]) => {
-    return visibleMessages
-      .filter(msg => msg && (msg.isTextMessage?.() || (msg.role && msg.content !== undefined)))
+  const convertCopilotMessages = (copilotMessages: any[]) => {
+    return copilotMessages
+      .filter(msg => msg && msg.content !== undefined)
       .map(msg => {
-        // 处理CopilotKit TextMessage格式
-        if (msg.isTextMessage && msg.isTextMessage()) {
-          // CopilotKit的MessageRole.User对应的字符串值
-          const isUser = msg.role === 'User' || msg.role === 'user' || msg.role === MessageRole.User;
-          return {
-            id: generateId(),
-            role: isUser ? 'user' : 'assistant',
-            content: msg.content || '',
-            timestamp: new Date().toISOString()
-          };
-        }
-        // 处理简单消息格式
-        if (msg.role && msg.content !== undefined) {
-          const isUser = msg.role.toLowerCase() === 'user' || msg.role === MessageRole.User;
-          return {
-            id: generateId(),
-            role: isUser ? 'user' : 'assistant',
-            content: msg.content || '',
-            timestamp: new Date().toISOString()
-          };
-        }
-        return null;
+        // 处理CopilotKit headless消息格式
+        const isUser = msg.role === 'user';
+        return {
+          id: msg.id || generateMessageId(),
+          role: isUser ? 'user' : 'assistant',
+          content: msg.content || '',
+          timestamp: msg.timestamp || new Date().toISOString()
+        };
       })
-      .filter(Boolean)
       .filter(msg => msg.content && msg.content.trim().length > 0); // 过滤掉空内容的消息
   };
 
   // 使用CopilotKit消息作为主要消息源，本地消息仅用于临时显示
-  const copilotKitMessages = convertVisibleMessages(visibleMessages || []);
+  const copilotKitMessages = convertCopilotMessages(copilotMessages || []);
   const allMessages = copilotKitMessages.length > 0 ? copilotKitMessages : messages;
 
   // 监听消息变化，自动滚动到底部
@@ -727,61 +419,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     );
   };
 
-  // Render capability selector with enhanced UI and keyboard navigation
-  const renderCapabilitySelector = () => {
-    if (!showCapabilitySelector) return null;
-
-    return (
-      <div
-        ref={selectorRef}
-        className="absolute z-50 bg-white border border-gray-200 rounded-lg shadow-xl py-2 min-w-[280px] backdrop-blur-sm"
-        style={{
-          top: selectorPosition.top,
-          left: selectorPosition.left,
-          animation: 'fadeInUp 0.15s ease-out'
-        }}
-      >
-        <div className="px-3 py-2 text-xs font-medium text-gray-500 border-b border-gray-100">
-          Select Capability
-        </div>
-        {CAPABILITY_OPTIONS.map((option, index) => (
-          <button
-            key={option.id}
-            onClick={() => handleCapabilitySelect(option)}
-            disabled={option.disabled}
-            className={`flex items-center justify-between px-4 py-3 w-full text-left transition-all duration-150 ${
-              option.disabled
-                ? 'opacity-50 cursor-not-allowed bg-gray-50'
-                : index === selectedCapabilityIndex
-                ? 'bg-blue-50 border-l-2 border-[#4792E6]'
-                : 'hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center space-x-3">
-              <span className={`font-medium ${
-                option.disabled
-                  ? 'text-gray-400'
-                  : index === selectedCapabilityIndex ? 'text-[#4792E6]' : 'text-[#4792E6]'
-              }`}>
-                {option.label}
-              </span>
-              <span className={`text-sm ${
-                option.disabled ? 'text-gray-400' : 'text-gray-600'
-              }`}>{option.description}</span>
-            </div>
-            {index === selectedCapabilityIndex && !option.disabled && (
-              <div className="flex items-center space-x-1 text-xs text-gray-400">
-                <span>↵</span>
-              </div>
-            )}
-          </button>
-        ))}
-        <div className="px-3 py-2 text-xs text-gray-400 border-t border-gray-100">
-          ↑↓ Navigate • ↵ Select • Esc Cancel
-        </div>
-      </div>
-    );
-  };
+  // Capability selector 渲染逻辑已移至 CapabilitySelector 组件
 
   return (
     <div 
@@ -900,7 +538,15 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         }}
                       />
                       {/* Capability Selector */}
-                      {renderCapabilitySelector()}
+          {showCapabilitySelector && (
+            <CapabilitySelector
+              ref={selectorRef}
+              options={CAPABILITY_OPTIONS}
+              selectedIndex={selectedCapabilityIndex}
+              position={selectorPosition}
+              onSelect={handleCapabilitySelect}
+            />
+          )}
                     </div>
                     
                     {/* Action Bar - Capability selector and Send button in same row */}
@@ -996,7 +642,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                             message.content.includes('Response stopped by user') ||
                             message.content.includes('用户中止响应')
                           ) ? (
-                            renderStatusMessage(message.content)
+                            <StatusMessage content={message.content} />
                           ) : (
                             <div className="break-words">
                               <ReactMarkdown>{message.content}</ReactMarkdown>
@@ -1008,44 +654,13 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                   </div>
                 ))}
                 
-                {/* Plan Components */}
-                {currentPlan && (
-                  <div className="flex justify-start mb-4">
-                    <div className="max-w-[80%]">
-                      <PlanGenerationCard
-                        plan={currentPlan}
-                        onConfirm={handlePlanConfirm}
-                        onExecute={handlePlanExecute}
-                        onCancel={handlePlanCancel}
-                        onEdit={handlePlanEdit}
-                      />
-                    </div>
+                {/* Agent State Render - 显示AI生成的计划和执行步骤 */}
+                {agentStateRender.render && (
+                  <div className="mb-4">
+                    {agentStateRender.render}
                   </div>
                 )}
-                
-                {simplePlan && (
-                  <div className="flex justify-start mb-4">
-                    <div className="max-w-[80%]">
-                      <SimplePlanCard
-                        plan={simplePlan}
-                        onApprove={() => setSimplePlan(null)}
-                        onReject={() => setSimplePlan(null)}
-                      />
-                    </div>
-                  </div>
-                )}
-                
-                {executionSteps && (
-                  <div className="flex justify-start mb-4">
-                    <div className="max-w-[80%]">
-                      <ExecutionStepsCard
-                        steps={executionSteps}
-                        onComplete={() => setExecutionSteps(null)}
-                      />
-                    </div>
-                  </div>
-                )}
-                
+
                 {/* AI Loading Animation */}
                 {copilotLoading && (
                   <div className="flex justify-start mb-4">
@@ -1120,7 +735,15 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                       />
                       
                       {/* Capability Selector Popup */}
-                      {renderCapabilitySelector()}
+        {showCapabilitySelector && (
+          <CapabilitySelector
+            ref={selectorRef}
+            options={CAPABILITY_OPTIONS}
+            selectedIndex={selectedCapabilityIndex}
+            position={selectorPosition}
+            onSelect={handleCapabilitySelect}
+          />
+        )}
                     </div>
                   </div>
                   

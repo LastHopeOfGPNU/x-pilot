@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Heart, Repeat2, MessageSquare, X, Send, Edit3, Check, Eye } from 'lucide-react';
-import { Card } from '../types';
-import ConfirmModal from './ConfirmModal';
+import { Card } from '../../types';
+import ConfirmModal from '../common/ConfirmModal';
 
 interface AutoReplyCardProps {
   card: Card;

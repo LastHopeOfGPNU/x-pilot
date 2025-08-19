@@ -1,23 +1,23 @@
 import React, { useState, useEffect, useCallback, createContext, useContext, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { CopilotKit } from '@copilotkit/react-core';
-import Sidebar from './components/Sidebar';
-import EngagementQueue from './components/EngagementQueue';
-import PostThreadQueue from './components/PostThreadQueue';
-import ResultsArea from './components/ResultsArea';
-import Config, { ConfigItem } from './components/Config';
-import Profile from './components/Profile';
-import Dashboard from './components/Dashboard';
-import MarketingStrategy from './components/MarketingStrategy';
-import Login from './components/Login';
+import Sidebar from './components/dashboard/Sidebar';
+import EngagementQueue from './components/auto-engagement/EngagementQueue';
+import PostThreadQueue from './components/posts-threads/PostThreadQueue';
+import ResultsArea from './components/common/ResultsArea';
+import Config, { ConfigItem } from './components/config/Config';
+import Profile from './components/profile/Profile';
+import Dashboard from './components/dashboard/Dashboard';
+import MarketingStrategy from './components/marketing-strategy/MarketingStrategy';
+import Login from './components/auth/Login';
 import TwitterAuthCallback from './pages/TwitterAuthCallback';
-import TwitterDirectCallback from './components/TwitterDirectCallback';
+import TwitterDirectCallback from './components/auth/TwitterDirectCallback';
 // Removed PlanDemo import - demo page deleted
 
 import { Card, InspirationAccount, Post } from './types/index';
-import AIAssistant from './components/AIAssistant';
-import EnvSwitcher from './components/EnvSwitcher';
-import Onboarding from './components/Onboarding';
+import AIAssistant from './components/ai-assistant/AIAssistant';
+import EnvSwitcher from './components/config/EnvSwitcher';
+import Onboarding from './components/common/Onboarding';
 
 import { apiConfigService } from './lib/apiConfigService';
 import { onboardingService } from './lib/onboardingService';
@@ -41,6 +41,7 @@ export interface MarketingStrategy {
 }
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { DataCacheProvider } from './contexts/DataCacheContext';
 
 // Create layout context for AI chat state
 const LayoutContext = createContext<{
@@ -171,11 +172,6 @@ const AppContent: React.FC = () => {
   const checkOnboardingStatus = useCallback(async () => {
       const isOnboardingMockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
       
-      console.log('App.tsx: Checking onboarding status:', {
-        user: !!user,
-        isOnboardingMockMode,
-        rawMockMode: localStorage.getItem('dev-onboarding-mode')
-      });
       
       // 如果启用了mock模式，强制显示onboarding
       if (isOnboardingMockMode) {
@@ -186,14 +182,12 @@ const AppContent: React.FC = () => {
       
       // 如果没有用户且不是mock模式，直接跳过onboarding检查
       if (!user && !isOnboardingMockMode) {
-        console.log('App.tsx: No user and not mock mode, skipping onboarding');
         setOnboardingStatus({ isFinished: true, currentStep: 'ENGAGEMENT', loading: false, error: undefined });
         return;
       }
 
       try {
         const status = await onboardingService.getCurrentStep();
-        console.log('App.tsx: Got onboarding status from service:', status);
         setOnboardingStatus({
           isFinished: status.is_finished,
           currentStep: status.current_step,
@@ -201,7 +195,6 @@ const AppContent: React.FC = () => {
           error: undefined
         });
       } catch (error) {
-        console.error('Failed to check onboarding status:', error);
         // 接口失败时直接显示主页面，不显示错误信息
         setOnboardingStatus({
           isFinished: true,
@@ -389,8 +382,8 @@ const AppContent: React.FC = () => {
             {/* Activity Queue / Config / Profile / Dashboard / Marketing Strategy */}
             <div className={`${
               showDashboard || showProfile ? 'w-full' : 
-              canShowBothPanels ? 'w-1/2' : 'flex-1'
-            } min-w-0 overflow-hidden`}>
+              canShowBothPanels ? 'w-auto' : 'flex-1'
+            } min-w-[500px] overflow-hidden`}>
               {showDashboard ? (
                 <Dashboard onNavigate={handleDashboardNavigate} />
               ) : showProfile ? (
@@ -453,16 +446,18 @@ const AppContent: React.FC = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/auth/supabase/twitter/callback" element={<TwitterAuthCallback />} />
-          <Route path="/auth/twitter/direct/callback" element={<TwitterDirectCallback />} />
-          {/* Removed PlanDemo route - demo page deleted */}
-          <Route path="/*" element={<AppContent />} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <DataCacheProvider>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/auth/supabase/twitter/callback" element={<TwitterAuthCallback />} />
+            <Route path="/auth/twitter/direct/callback" element={<TwitterDirectCallback />} />
+            {/* Removed PlanDemo route - demo page deleted */}
+            <Route path="/*" element={<AppContent />} />
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </DataCacheProvider>
   );
 }
 

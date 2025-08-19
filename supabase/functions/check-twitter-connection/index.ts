@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
       });
     }
     // 查询 user_social_connections 表
-    const { data, error } = await supabase.from('user_social_connections').select('*').eq('user_id', user.id).eq('platform', 'twitter').eq('is_active', true);
+    const { data, error } = await supabase.from('user_social_connections').select('*').eq('user_id', user.id).eq('platform', 'twitter');
     
     // 添加调试日志
     console.log('Debug - User ID:', user.id);

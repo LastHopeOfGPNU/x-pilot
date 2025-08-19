@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Twitter, CheckCircle, XCircle, Loader, ArrowRight } from 'lucide-react';
-import { twitterService } from '../lib/twitterService';
+import { twitterService } from '../../lib/twitterService';
 
 export const TwitterDirectCallback: React.FC = () => {
   const [searchParams] = useSearchParams();

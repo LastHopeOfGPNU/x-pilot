@@ -29,11 +29,7 @@ class OnboardingService {
   // 检查是否启用mock模式
   private isOnboardingMockMode(): boolean {
     const mockMode = localStorage.getItem('dev-onboarding-mode');
-    console.log('OnboardingService: Checking mock mode:', {
-      rawValue: mockMode,
-      type: typeof mockMode,
-      isTrue: mockMode === 'true'
-    });
+
     return mockMode === 'true';
   }
 
@@ -43,7 +39,6 @@ class OnboardingService {
       // Mock implementation - 模拟延迟
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      console.log('Mock: Getting current onboarding step:', mockOnboardingState);
       return { ...mockOnboardingState };
     } else {
       // 真实API实现

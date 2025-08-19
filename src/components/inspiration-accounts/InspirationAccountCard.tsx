@@ -1,5 +1,5 @@
 import React from 'react';
-import { InspirationAccount } from '../types';
+import { InspirationAccount } from '../../types';
 import { CheckCircle, Users, Heart, Star } from 'lucide-react';
 
 interface InspirationAccountCardProps {

@@ -33,12 +33,31 @@ export interface GrowthMetrics {
   description: string;
 }
 
+export interface Account {
+  id: string;
+  username: string;
+  display_name: string;
+  profile_image_url: string | null;
+  followers_count: number;
+  verified: boolean;
+  is_starred: boolean;
+  is_target: boolean;
+}
+
+export interface InspirationAccountsOverview {
+  accounts: Account[];
+  total_count: number;
+  starred_count: number;
+  target_count: number;
+}
+
 export interface DashboardData {
   stats: DashboardStats;
   recent_activities: RecentActivity[];
   system_status: SystemStatus;
   growth_metrics: GrowthMetrics;
   all_systems_active: boolean;
+  inspiration_accounts_overview: InspirationAccountsOverview;
 }
 
 class DashboardService {
