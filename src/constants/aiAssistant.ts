@@ -21,10 +21,6 @@ export const SELECTOR_CONFIG = {
   LEFT_OFFSET: 0
 } as const;
 
-// 线程ID生成函数
-export const generateThreadId = (): string => 
-  `thread-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
 // 消息ID生成函数
 export const generateMessageId = (): string => 
   `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
