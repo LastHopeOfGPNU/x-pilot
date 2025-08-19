@@ -1,13 +1,10 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Send, Zap, ChevronLeft, ChevronRight, Square, Loader2, AlertCircle, Wifi, WifiOff, Maximize2, Minimize2, Plus, Copy, User, UserCircle, XCircle, CheckCircle } from 'lucide-react';
+import { Send, Zap, ChevronLeft, ChevronRight, Square, AlertCircle, Maximize2, Minimize2, Plus, User} from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import PlanGenerationCard from './PlanGenerationCard';
 import SimplePlanCard from './SimplePlanCard';
 import ExecutionStepsCard from './ExecutionStepsCard';
-import { supabase } from '../lib/supabase';
-import { apiConfigService } from '../lib/apiConfigService';
-import { useCopilotAction, useCopilotReadable, useCopilotChat, useCopilotContext, useLangGraphInterrupt } from '@copilotkit/react-core';
-import { TextMessage, MessageRole } from '@copilotkit/runtime-client-gql';
+import { useCopilotChatHeadless_c, useCopilotAction, useCopilotReadable, useCopilotContext, useCoAgentStateRender } from '@copilotkit/react-core';
 import { useAuth } from '../contexts/AuthContext';
 
 // 定义消息类型
@@ -60,6 +57,21 @@ interface BackendRequest {
   threadId: string;
 }
 
+// 定义Agent状态类型，匹配LangGraph中的状态
+type AgentState = {
+  execution_steps?: {
+    step: string;
+    status: 'pending' | 'running' | 'completed' | 'failed';
+    description: string;
+    details?: string;
+  }[];
+  plan_steps?: {
+    title: string;
+    description: string;
+    status: 'pending' | 'approved' | 'rejected';
+  }[];
+};
+
 // Capability selector options
 const CAPABILITY_OPTIONS = [
   { id: 'post', label: '@post', description: 'Vibe Generation Post', disabled: true },
@@ -100,16 +112,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   // CopilotKit integration - no need for manual retry logic
   const [currentPlan, setCurrentPlan] = useState<PlanData | null>(null);
   const [planGenerationBuffer, setPlanGenerationBuffer] = useState<string>('');
-  const [simplePlan, setSimplePlan] = useState<{ steps: string[] } | null>(null);
-  const [executionSteps, setExecutionSteps] = useState<Array<{
-    step: string;
-    status: 'pending' | 'running' | 'completed' | 'failed';
-    description: string;
-    details?: string;
-  }> | null>(null);
+  // 移除simplePlan和executionSteps状态，改用useCoAgentStateRender
 
   // CopilotKit chat integration
-  const { appendMessage, isLoading: copilotLoading, visibleMessages, reset, stopGeneration } = useCopilotChat();
+  const { messages: copilotMessages, sendMessage, isLoading: copilotLoading, reset, stopGeneration } = useCopilotChatHeadless_c();
   
   // CopilotKit context for thread management
   const { setThreadId: setCopilotThreadId } = useCopilotContext();
@@ -205,40 +211,41 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     }
   });
   
-  // Handle check_steps interrupt from agent
-  useLangGraphInterrupt({
-    enabled: (event) => {
-      console.log('AIAssistant interrupt event:', event);
-      return event?.eventValue?.type === 'check_steps';
-    },
-    render: ({ event, resolve }) => {
-      console.log('AIAssistant rendering check_steps interrupt:', event);
-      
-      const planContent = event?.eventValue?.content || [];
-      
-      // Convert plan content to PlanStep format
-      const planSteps = planContent.map((step: string, index: number) => ({
-        id: `step-${index}`,
-        stepNumber: index + 1,
-        title: step,
-        description: `执行步骤 ${index + 1}`,
-        estimatedTime: '预计 5-10 分钟',
-        priority: 'medium' as const,
-        status: 'pending' as const
-      }));
+  // 使用useCoAgentStateRender来渲染Agent状态
+  const agentStateRender = useCoAgentStateRender<AgentState>({
+    name: "xpilot_agent", // Agent名称，需要与后端LangGraph中的名称匹配
+    render: ({ state }) => {
+      console.log('Agent state render:', state);
       
       return (
-        <PlanGenerationCard
-          title="AI 代理计划审批"
-          description="AI 代理已创建以下执行计划，请审核并选择是否执行。"
-          steps={planSteps}
-          status="ready"
-          onConfirmPlan={() => resolve({ code: 'APPROVE' })}
-          onCancelPlan={() => resolve({ code: 'CANCEL' })}
-          className="mb-4"
-        />
+        <div className="space-y-4">
+          {/* 渲染计划步骤 */}
+          {state.plan_steps && state.plan_steps.length > 0 && (
+            <div className="flex justify-start mb-4">
+              <div className="max-w-[80%]">
+                <SimplePlanCard
+                  steps={state.plan_steps.map(step => step.title)}
+                  onExecute={() => console.log('Plan executed')}
+                  onCancel={() => console.log('Plan cancelled')}
+                />
+              </div>
+            </div>
+          )}
+          
+          {/* 渲染执行步骤 */}
+          {state.execution_steps && state.execution_steps.length > 0 && (
+            <div className="flex justify-start mb-4">
+              <div className="max-w-[80%]">
+                <ExecutionStepsCard
+                  steps={state.execution_steps}
+                  title="执行进度"
+                />
+              </div>
+            </div>
+          )}
+        </div>
       );
-    }
+    },
   });
   
   // Notify parent component when expanded state changes
@@ -253,18 +260,6 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
 
   // 生成唯一ID
   const generateId = () => `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-  // 获取认证头
-  const getAuthHeaders = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      throw new Error('用户未登录');
-    }
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`
-    };
-  };
 
   // 处理容器焦点
   const handleContainerFocus = () => {
@@ -569,12 +564,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
 
     try {
       // Send message to CopilotKit
-      await appendMessage(
-        new TextMessage({
-          role: MessageRole.User,
-          content: messageToSend,
-        })
-      );
+      await sendMessage({
+        id: generateId(),
+        role: 'user',
+        content: messageToSend,
+      });
       
       // Success - reset retry count
       setRetryCount(0);
@@ -663,39 +657,24 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   };
 
   // 转换CopilotKit消息格式，保持用户和AI消息的对应关系
-  const convertVisibleMessages = (visibleMessages: any[]) => {
-    return visibleMessages
-      .filter(msg => msg && (msg.isTextMessage?.() || (msg.role && msg.content !== undefined)))
+  const convertCopilotMessages = (copilotMessages: any[]) => {
+    return copilotMessages
+      .filter(msg => msg && msg.content !== undefined)
       .map(msg => {
-        // 处理CopilotKit TextMessage格式
-        if (msg.isTextMessage && msg.isTextMessage()) {
-          // CopilotKit的MessageRole.User对应的字符串值
-          const isUser = msg.role === 'User' || msg.role === 'user' || msg.role === MessageRole.User;
-          return {
-            id: generateId(),
-            role: isUser ? 'user' : 'assistant',
-            content: msg.content || '',
-            timestamp: new Date().toISOString()
-          };
-        }
-        // 处理简单消息格式
-        if (msg.role && msg.content !== undefined) {
-          const isUser = msg.role.toLowerCase() === 'user' || msg.role === MessageRole.User;
-          return {
-            id: generateId(),
-            role: isUser ? 'user' : 'assistant',
-            content: msg.content || '',
-            timestamp: new Date().toISOString()
-          };
-        }
-        return null;
+        // 处理CopilotKit headless消息格式
+        const isUser = msg.role === 'user';
+        return {
+          id: msg.id || generateId(),
+          role: isUser ? 'user' : 'assistant',
+          content: msg.content || '',
+          timestamp: msg.timestamp || new Date().toISOString()
+        };
       })
-      .filter(Boolean)
       .filter(msg => msg.content && msg.content.trim().length > 0); // 过滤掉空内容的消息
   };
 
   // 使用CopilotKit消息作为主要消息源，本地消息仅用于临时显示
-  const copilotKitMessages = convertVisibleMessages(visibleMessages || []);
+  const copilotKitMessages = convertCopilotMessages(copilotMessages || []);
   const allMessages = copilotKitMessages.length > 0 ? copilotKitMessages : messages;
 
   // 监听消息变化，自动滚动到底部
@@ -1059,28 +1038,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                   </div>
                 )}
                 
-                {simplePlan && (
-                  <div className="flex justify-start mb-4">
-                    <div className="max-w-[80%]">
-                      <SimplePlanCard
-                        plan={simplePlan}
-                        onApprove={() => setSimplePlan(null)}
-                        onReject={() => setSimplePlan(null)}
-                      />
-                    </div>
-                  </div>
-                )}
-                
-                {executionSteps && (
-                  <div className="flex justify-start mb-4">
-                    <div className="max-w-[80%]">
-                      <ExecutionStepsCard
-                        steps={executionSteps}
-                        onComplete={() => setExecutionSteps(null)}
-                      />
-                    </div>
-                  </div>
-                )}
+                {/* Agent State Render - 替代原有的SimplePlanCard和ExecutionStepsCard */}
+                {agentStateRender}
                 
 
                 {/* AI Loading Animation */}
