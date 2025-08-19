@@ -51,13 +51,13 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
         const { error: signUpError } = await signUp(email, password)
         
         if (signUpError) {
-          console.error('注册错误:', signUpError)
+          console.error('Registration error:', signUpError)
           if (signUpError.message.includes('email_address_invalid')) {
             setError('邮箱地址格式无效，请使用有效的邮箱地址')
           } else if (signUpError.message.includes('User already registered')) {
             setError('该邮箱已被注册，请使用其他邮箱或直接登录')
           } else {
-            setError(`注册失败: ${signUpError.message}`)
+            setError(`Registration failed: ${signUpError.message}`)
           }
         } else {
           // 注册成功，显示醒目的成功模态框
@@ -69,13 +69,13 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
         const { error } = await signIn(email, password)
         
         if (error) {
-          console.error('登录错误:', error)
+          console.error('Login error:', error)
           if (error.message.includes('email_not_confirmed')) {
             setError('请先验证您的邮箱地址。检查您的邮箱并点击验证链接。')
           } else if (error.message.includes('Invalid login credentials')) {
-            setError('邮箱或密码错误，请检查后重试')
+            setError('Invalid email or password, please check and try again')
           } else {
-            setError(`登录失败: ${error.message}`)
+            setError(`Login failed: ${error.message}`)
           }
         } else {
           setSuccess('登录成功！')
@@ -85,7 +85,7 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
         }
       }
     } catch (err) {
-      setError('发生未知错误，请重试')
+      setError('An unknown error occurred, please try again')
     } finally {
       setLoading(false)
     }

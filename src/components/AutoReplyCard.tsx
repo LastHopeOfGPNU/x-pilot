@@ -81,7 +81,7 @@ const AutoReplyCard: React.FC<AutoReplyCardProps> = ({
 
   return (
     <div 
-      className={`bg-white rounded-lg shadow-sm transition-all duration-200 cursor-pointer ${
+      className={`bg-white rounded-lg shadow-sm transition-all duration-200 cursor-pointer max-w-2xl w-full ${
         isSelected 
           ? 'bg-blue-50 border-2 border-blue-500 ring-2 ring-blue-200 shadow-lg' 
           : 'border border-gray-200 hover:shadow-md'
@@ -165,16 +165,18 @@ const AutoReplyCard: React.FC<AutoReplyCardProps> = ({
             <textarea
               value={editedReply}
               onChange={(e) => setEditedReply(e.target.value)}
-              className="w-full text-sm text-gray-900 bg-transparent border-none resize-none focus:outline-none leading-relaxed min-h-[120px]"
-              rows={5}
+              className="w-full text-sm text-gray-900 bg-transparent border-none resize-none focus:outline-none leading-relaxed min-h-[80px] max-h-[200px]"
+              rows={3}
               placeholder="Enter your reply..."
               onClick={(e) => e.stopPropagation()}
               autoFocus
             />
           ) : (
-            <p className="text-sm leading-relaxed text-gray-900 whitespace-pre-line">
-              {editedReply || card.suggestedReply || 'No suggested reply available'}
-            </p>
+            <div className="min-h-[80px] flex items-start">
+              <p className="text-sm leading-relaxed text-gray-900 whitespace-pre-line">
+                {editedReply || card.suggestedReply || 'No suggested reply available'}
+              </p>
+            </div>
           )}
         </div>
 

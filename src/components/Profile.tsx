@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Calendar, MapPin, Link, Star, Settings, Edit3, Check, X, Camera, Shield, Bell, CreditCard, Users, Activity, TrendingUp, MessageSquare, BarChart3, Clock, Gift, ExternalLink, AlertCircle, LogOut, Loader2 } from 'lucide-react';
+import { User, Mail, Calendar, MapPin, Link, Star, Settings, Edit3, Check, X, Camera, Shield, Bell, CreditCard, Users, Activity, TrendingUp, MessageSquare, BarChart3, Clock, Gift, AlertCircle, LogOut, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { twitterService, TwitterConnection } from '../lib/twitterService';
 
@@ -115,16 +115,27 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
     try {
       // 检查Twitter API配置
       if (!twitterService.isConfigured()) {
-        alert('Twitter API 配置不完整！\n\n请按以下步骤配置：\n1. 访问 Twitter Developer Portal (https://developer.twitter.com/)\n2. 创建应用并获取 Client ID 和 Client Secret\n3. 在项目根目录的 .env 文件中配置这些密钥\n4. 重启开发服务器');
+        alert('Twitter API configuration incomplete!\n\nPlease follow these steps to configure:\n1. Visit Twitter Developer Portal (https://developer.twitter.com/)\n2. Create an app and get Client ID and Client Secret\n3. Configure these keys in the .env file in the project root directory\n4. Restart the development server');
         return;
       }
 
+      // 首先检查是否已有连接且token是否有效
+      const tokenCheck = await twitterService.checkAndRefreshToken();
+      
+      if (tokenCheck.isValid && tokenCheck.connection) {
+        // Token有效，更新连接状态
+        setTwitterConnection(tokenCheck.connection);
+        console.log('Twitter connection is valid and refreshed if needed');
+        return;
+      }
+
+      // 如果没有有效连接，启动新的OAuth流程
       const authUrl = await twitterService.getAuthUrl();
       window.location.href = authUrl;
     } catch (error) {
       console.error('Error connecting to Twitter:', error);
-      const errorMessage = error instanceof Error ? error.message : '连接Twitter时发生未知错误';
-      alert(`连接失败：${errorMessage}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred while connecting to Twitter';
+      alert(`Connection failed: ${errorMessage}`);
     }
   };
 
@@ -350,28 +361,8 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
                 <h4 className="font-medium text-red-900">Configuration Required</h4>
               </div>
               <p className="text-sm text-red-700 mb-3">
-                Twitter API credentials are not configured. Please set up your Twitter API keys before connecting.
+                Twitter API credentials are not configured. Please contact support for assistance with setup.
               </p>
-              <div className="flex space-x-3">
-                <a
-                  href="/twitter/config"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center space-x-2 text-sm text-red-600 hover:text-red-800 font-medium"
-                >
-                  <span>Check Configuration</span>
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-                <a
-                  href="/twitter/diagnostics"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  <span>Run Diagnostics</span>
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-              </div>
             </div>
             
             <button

@@ -165,16 +165,16 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
         queue.target.clear();
       }
     } catch (error) {
-      console.error('批量操作失败:', error);
-      showToast('批量操作失败，正在恢复状态', 'error');
+      console.error('Batch operation failed:', error);
+      showToast('Batch operation failed, restoring state', 'error');
       
-      // 如果批量操作失败，通知所有回调
+      // If batch operation fails, notify all callbacks
       callbacks.forEach((callback) => {
         callback(false);
       });
       callbacks.clear();
       
-      // 如果批量操作失败，重新加载数据以恢复正确状态
+      // If batch operation fails, reload data to restore correct state
       // 确保只传递有效的账号类型参数
       const validAccountType = (activeTab === 'starred' || activeTab === 'outreach') 
         ? activeTab 
@@ -321,7 +321,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
     } catch (error) {
       console.error('Failed to fetch engagement data:', error);
       showToast('Failed to load engagement queue', 'error');
-      // 如果API调用失败，设置为空数组而不是使用mock数据
+      // If API call fails, set to empty array instead of using mock data
       setAutoReplyData([]);
     } finally {
       setLoading(false);

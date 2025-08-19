@@ -31,7 +31,7 @@ export interface InspirationAccountsListResponse {
   };
 }
 
-// 错误响应接口
+// Error response interface
 export interface ErrorResponse {
   detail: string;
 }
@@ -110,7 +110,7 @@ class InspirationAccountService {
 
       if (!response.ok) {
         const errorData: ErrorResponse = await response.json();
-        throw new Error(errorData.detail || `设置对标账号失败: ${response.status}`);
+        throw new Error(errorData.detail || `Failed to set benchmark account: ${response.status}`);
       }
     } catch (error) {
 
@@ -134,7 +134,7 @@ class InspirationAccountService {
 
       if (!response.ok) {
         const errorData: ErrorResponse = await response.json();
-        throw new Error(errorData.detail || `收藏账号失败: ${response.status}`);
+        throw new Error(errorData.detail || `Failed to favorite account: ${response.status}`);
       }
     } catch (error) {
 
@@ -158,7 +158,7 @@ class InspirationAccountService {
 
       if (!response.ok) {
         const errorData: ErrorResponse = await response.json();
-        throw new Error(errorData.detail || `批量设置对标账号失败: ${response.status}`);
+        throw new Error(errorData.detail || `Failed to batch set benchmark accounts: ${response.status}`);
       }
     } catch (error) {
 
@@ -182,7 +182,7 @@ class InspirationAccountService {
 
       if (!response.ok) {
         const errorData: ErrorResponse = await response.json();
-        throw new Error(errorData.detail || `批量收藏账号失败: ${response.status}`);
+        throw new Error(errorData.detail || `Failed to batch favorite accounts: ${response.status}`);
       }
     } catch (error) {
 

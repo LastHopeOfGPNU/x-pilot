@@ -19,7 +19,7 @@ export const TwitterDirectCallback: React.FC = () => {
         const error = searchParams.get('error');
 
         if (error) {
-          throw new Error(`Twitter授权失败: ${error}`);
+          throw new Error(`Twitter authorization failed: ${error}`);
         }
 
         if (!code || !state) {
@@ -69,12 +69,12 @@ export const TwitterDirectCallback: React.FC = () => {
           
           return () => clearInterval(timer);
         } else {
-          throw new Error(result.error || '连接失败，请重试');
+          throw new Error(result.error || 'Connection failed, please try again');
         }
       } catch (error) {
-        console.error('Twitter回调处理失败:', error);
+        console.error('Twitter callback processing failed:', error);
         setStatus('error');
-        const errorMessage = error instanceof Error ? error.message : '未知错误';
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         
         // 提供更友好的错误信息
         if (errorMessage.includes('用户未登录')) {
@@ -82,15 +82,15 @@ export const TwitterDirectCallback: React.FC = () => {
         } else if (errorMessage.includes('OAuth state not found') || errorMessage.includes('OAuth会话已过期')) {
           setMessage('授权会话已过期，请重新开始连接流程');
         } else if (errorMessage.includes('Invalid state parameter')) {
-          setMessage('授权验证失败，请重新开始连接流程');
+          setMessage('Authorization verification failed, please restart the connection process');
         } else if (errorMessage.includes('请求超时')) {
-          setMessage('网络请求超时，请检查网络连接后重试');
+          setMessage('Network request timeout, please check your network connection and try again');
         } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('network')) {
-          setMessage('网络连接失败，请检查网络后重试');
+          setMessage('Network connection failed, please check your network and try again');
         } else if (errorMessage.includes('invalid input syntax for type uuid')) {
-          setMessage('用户身份验证失败，请重新登录应用');
+          setMessage('User authentication failed, please log in to the app again');
         } else if (errorMessage.includes('Missing required parameters')) {
-          setMessage('服务配置错误，请联系管理员');
+          setMessage('Service configuration error, please contact administrator');
         } else {
           setMessage(errorMessage);
         }
@@ -158,7 +158,7 @@ export const TwitterDirectCallback: React.FC = () => {
               <div className="space-y-4">
                 <XCircle className="mx-auto w-12 h-12 text-red-500" />
                 <div className="space-y-2">
-                  <p className="text-lg font-semibold text-red-600">授权失败</p>
+                  <p className="text-lg font-semibold text-red-600">Authorization Failed</p>
                   <p className="text-sm text-gray-600">{message}</p>
                 </div>
                 <button

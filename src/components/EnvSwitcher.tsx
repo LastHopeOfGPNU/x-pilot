@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Globe, Server } from 'lucide-react';
+import { Settings, Globe, Server, RotateCcw } from 'lucide-react';
 import { apiConfigService } from '../lib/apiConfigService';
+import { supabase } from '../lib/supabase';
 
 interface EnvSwitcherProps {
   className?: string;
@@ -9,6 +10,7 @@ interface EnvSwitcherProps {
 const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
   const [isLocalEnv, setIsLocalEnv] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     // 只在开发环境显示
@@ -35,6 +37,48 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
   const handleToggle = () => {
     const newIsLocal = apiConfigService.toggleApiEnvironment();
     setIsLocalEnv(newIsLocal);
+  };
+
+  // 获取认证头
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      throw new Error('用户未登录');
+    }
+
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    };
+  };
+
+  const handleOnboardingReset = async () => {
+    setIsResetting(true);
+    try {
+      const headers = await getAuthHeaders();
+      const baseUrl = apiConfigService.getApiBaseUrl();
+      const response = await fetch(`${baseUrl}/api/onboarding/reset`, {
+        method: 'DELETE',
+        headers,
+      });
+      
+      if (response.ok) {
+        // 清除本地存储的onboarding状态
+        localStorage.removeItem('onboarding-status');
+        localStorage.removeItem('onboarding-step');
+        // 刷新页面以重新开始引导流程
+        window.location.reload();
+      } else {
+        console.error('重置引导流程失败:', response.statusText);
+        alert('重置引导流程失败，请稍后重试');
+      }
+    } catch (error) {
+      console.error('重置引导流程出错:', error);
+      alert('重置引导流程出错，请稍后重试');
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   const environments = apiConfigService.getAvailableEnvironments();
@@ -79,6 +123,57 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
                 )}
               </div>
             ))}
+          </div>
+          
+          {/* Onboarding控制选项 */}
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="mb-2">
+              <div className="text-sm font-medium text-gray-700 mb-2">开发选项</div>
+              
+              <div className="p-3 rounded-md border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <RotateCcw size={16} className="text-blue-600" />
+                    <div>
+                      <div className="font-medium text-sm text-gray-700">重置引导流程</div>
+                      <div className="text-xs text-gray-500">调用API重新开始引导流程</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleOnboardingReset}
+                    disabled={isResetting}
+                    className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                  >
+                    {isResetting ? (
+                      <>
+                        <RotateCcw size={12} className="animate-spin" />
+                        重置中...
+                      </>
+                    ) : (
+                      '重置'
+                    )}
+                  </button>
+                </div>
+              </div>
+              
+              <div className="mt-2 p-3 rounded-md border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium text-sm text-gray-700">跳过Onboarding</div>
+                    <div className="text-xs text-gray-500">直接进入主界面</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('onboarding-status', 'finished');
+                      window.location.reload();
+                    }}
+                    className="px-3 py-1.5 bg-orange-600 text-white text-xs font-medium rounded hover:bg-orange-700 transition-colors"
+                  >
+                    跳过
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
           
           <div className="mt-3 pt-3 border-t border-gray-100">

@@ -13,6 +13,7 @@
     "@copilotkit/react-core": "^1.9.3",
     "@copilotkit/react-textarea": "^1.9.3",
     "@copilotkit/react-ui": "^1.9.3",
+    "@copilotkit/runtime-client-gql": "^1.10.2",
     "@supabase/supabase-js": "^2.52.1",
     "lucide-react": "^0.344.0",
     "mermaid": "^11.9.0",

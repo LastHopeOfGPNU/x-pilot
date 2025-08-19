@@ -171,7 +171,7 @@ class TwitterService {
       return { success: true, data: connection };
     } catch (error) {
 
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return { success: false, error: errorMessage };
     }
   }
@@ -328,7 +328,7 @@ class TwitterService {
       return { success: true };
     } catch (error) {
 
-      return { success: false, error: error instanceof Error ? error.message : '未知错误' };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
   
@@ -373,6 +373,43 @@ class TwitterService {
   async isConnected(): Promise<boolean> {
     const connection = await this.getUserConnection();
     return connection !== null && connection.is_active;
+  }
+
+  // 检查token是否过期并自动刷新
+  async checkAndRefreshToken(): Promise<{ isValid: boolean; connection?: TwitterConnection | null }> {
+    try {
+      const connection = await this.getUserConnection();
+      
+      if (!connection || !connection.is_active) {
+        return { isValid: false, connection: null };
+      }
+
+      // 检查token是否过期
+      if (connection.expires_at) {
+        const expiresAt = new Date(connection.expires_at);
+        const now = new Date();
+        
+        // 如果token已过期或即将在5分钟内过期，尝试刷新
+        if (expiresAt <= new Date(now.getTime() + 5 * 60 * 1000)) {
+          console.log('Token expired or expiring soon, attempting refresh...');
+          
+          try {
+            await this.refreshTwitterToken();
+            // 重新获取更新后的连接信息
+            const refreshedConnection = await this.getUserConnection();
+            return { isValid: true, connection: refreshedConnection };
+          } catch (refreshError) {
+            console.error('Failed to refresh token:', refreshError);
+            return { isValid: false, connection };
+          }
+        }
+      }
+
+      return { isValid: true, connection };
+    } catch (error) {
+      console.error('Error checking token validity:', error);
+      return { isValid: false, connection: null };
+    }
   }
 
   // 获取当前认证用户

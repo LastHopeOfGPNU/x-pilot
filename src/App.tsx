@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { CopilotKit } from '@copilotkit/react-core';
 import Sidebar from './components/Sidebar';
@@ -17,8 +17,10 @@ import TwitterDirectCallback from './components/TwitterDirectCallback';
 import { Card, InspirationAccount, Post } from './types/index';
 import AIAssistant from './components/AIAssistant';
 import EnvSwitcher from './components/EnvSwitcher';
+import Onboarding from './components/Onboarding';
 
 import { apiConfigService } from './lib/apiConfigService';
+import { onboardingService } from './lib/onboardingService';
 
 // 定义MarketingStrategy类型
 export interface MarketingStrategy {
@@ -50,6 +52,12 @@ export const useLayout = () => useContext(LayoutContext);
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [onboardingStatus, setOnboardingStatus] = useState<{
+    isFinished: boolean;
+    currentStep: string;
+    loading: boolean;
+    error?: string;
+  }>({ isFinished: false, currentStep: 'START', loading: true });
   // 初始化时从localStorage读取，避免useEffect执行两次
   const [activeMenuItem, setActiveMenuItem] = useState<string>(() => {
     const savedMenuItem = localStorage.getItem('activeMenuItem');
@@ -66,6 +74,20 @@ const AppContent: React.FC = () => {
   const [isAIChatExpanded, setIsAIChatExpanded] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [apiBaseUrl, setApiBaseUrl] = useState<string>(apiConfigService.getApiBaseUrl());
+
+  // 使用useCallback避免onComplete函数重复创建 - 必须在所有条件渲染之前
+  const handleOnboardingComplete = useCallback(() => {
+    setOnboardingStatus({ isFinished: true, currentStep: 'ENGAGEMENT', loading: false, error: undefined });
+    // 导航到 Engagement Queue (Inspiration Accounts)
+    setActiveMenuItem('Inspiration Accounts');
+    // 清除其他选择状态
+    setSelectedCard(null);
+    setSelectedAccount(null);
+    setSelectedConfigItem(null);
+    setSelectedPostId(null);
+    setSelectedPost(null);
+    setSelectedStrategy(null);
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -119,6 +141,57 @@ const AppContent: React.FC = () => {
     };
   }, []);
 
+  // 检查onboarding状态
+  const checkOnboardingStatus = useCallback(async () => {
+      const isOnboardingMockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
+      
+      console.log('App.tsx: Checking onboarding status:', {
+        user: !!user,
+        isOnboardingMockMode,
+        rawMockMode: localStorage.getItem('dev-onboarding-mode')
+      });
+      
+      // 如果启用了mock模式，强制显示onboarding
+      if (isOnboardingMockMode) {
+        console.log('App.tsx: Mock mode enabled, forcing onboarding display');
+        setOnboardingStatus({ isFinished: false, currentStep: 'START', loading: false, error: undefined });
+        return;
+      }
+      
+      // 如果没有用户且不是mock模式，直接跳过onboarding检查
+      if (!user && !isOnboardingMockMode) {
+        console.log('App.tsx: No user and not mock mode, skipping onboarding');
+        setOnboardingStatus({ isFinished: true, currentStep: 'ENGAGEMENT', loading: false, error: undefined });
+        return;
+      }
+
+      try {
+        const status = await onboardingService.getCurrentStep();
+        console.log('App.tsx: Got onboarding status from service:', status);
+        setOnboardingStatus({
+          isFinished: status.is_finished,
+          currentStep: status.current_step,
+          loading: false,
+          error: undefined
+        });
+      } catch (error) {
+        console.error('Failed to check onboarding status:', error);
+        // 接口失败时直接显示主页面，不显示错误信息
+        setOnboardingStatus({
+          isFinished: true,
+          currentStep: 'ENGAGEMENT',
+          loading: false,
+          error: undefined
+        });
+       }
+     }, [user]);
+
+  // 移除重试功能，因为接口失败时直接显示主页面
+
+  useEffect(() => {
+    checkOnboardingStatus();
+  }, [checkOnboardingStatus]);
+
   // Calculate available space for intelligent layout
   const sidebarWidth = 256; // w-64 = 16rem = 256px
   const aiChatWidth = isAIChatExpanded ? Math.min(Math.max(windowWidth * 0.55, 600), 800) : 320; // Expanded: 55vw (min 600px, max 800px), Normal: 320px
@@ -131,15 +204,42 @@ const AppContent: React.FC = () => {
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-blue-50">
         <div className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 rounded-full border-4 border-blue-200 animate-spin border-t-[#4792E6]"></div>
-          <p className="text-gray-600">正在加载...</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
 
-  // 如果用户未登录，显示登录页面
-  if (!user) {
+  // 检查是否启用了开发模式的onboarding
+  const isOnboardingMockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
+  
+  // 如果用户未登录且未启用mock模式，显示登录页面
+  if (!user && !isOnboardingMockMode) {
     return <Login />;
+  }
+
+  // 如果onboarding状态还在加载中
+  if (onboardingStatus.loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-blue-50">
+        <div className="text-center">
+          <div className="mx-auto mb-4 w-16 h-16 rounded-full border-4 border-blue-200 animate-spin border-t-[#4792E6]"></div>
+          <p className="text-gray-600">Checking setup status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 移除错误处理UI，接口失败时直接显示主页面
+
+  // 如果用户需要完成onboarding
+  if (!onboardingStatus.isFinished) {
+    return (
+      <Onboarding 
+        onComplete={handleOnboardingComplete}
+        initialStep={onboardingStatus.currentStep}
+      />
+    );
   }
 
   const handleMenuItemClick = (itemName: string) => {
@@ -244,9 +344,10 @@ const AppContent: React.FC = () => {
 
   return (
     <CopilotKit 
-      runtimeUrl='https://pilotapi.producthot.top/copilotkit'
+      runtimeUrl={`${apiBaseUrl}/copilotkit`}
       agent='chat_agent'
-      showDevConsole={true}
+      showDevConsole={import.meta.env.DEV}
+      publicLicenseKey={import.meta.env.VITE_COPILOTKIT_PUBLIC_LICENSE_KEY}
     >
       <LayoutContext.Provider value={{ isAIChatExpanded, setIsAIChatExpanded }}>
         <div className="flex overflow-hidden h-screen bg-gray-50">
