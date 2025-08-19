@@ -41,6 +41,7 @@ export interface MarketingStrategy {
 }
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { DataCacheProvider } from './contexts/DataCacheContext';
 
 // Create layout context for AI chat state
 const LayoutContext = createContext<{
@@ -453,16 +454,18 @@ const AppContent: React.FC = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/auth/supabase/twitter/callback" element={<TwitterAuthCallback />} />
-          <Route path="/auth/twitter/direct/callback" element={<TwitterDirectCallback />} />
-          {/* Removed PlanDemo route - demo page deleted */}
-          <Route path="/*" element={<AppContent />} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <DataCacheProvider>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/auth/supabase/twitter/callback" element={<TwitterAuthCallback />} />
+            <Route path="/auth/twitter/direct/callback" element={<TwitterDirectCallback />} />
+            {/* Removed PlanDemo route - demo page deleted */}
+            <Route path="/*" element={<AppContent />} />
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </DataCacheProvider>
   );
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   TrendingUp, 
   Users, 
@@ -18,9 +18,11 @@ import {
   Star,
   CheckCircle,
   AlertCircle,
-  Loader
+  Loader,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useDataCache } from '../contexts/DataCacheContext';
 import { dashboardService, DashboardData } from '../lib/dashboardService';
 
 // Loading Card Component
@@ -54,27 +56,55 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const { user } = useAuth();
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const {
+    getDashboardData,
+    setDashboardData,
+    isDashboardLoading,
+    setDashboardLoading
+  } = useDataCache();
+  
+  // 从缓存获取数据
+  const dashboardData = getDashboardData();
+  const loading = isDashboardLoading();
+  
+  const [backgroundLoading, setBackgroundLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [animatedStats, setAnimatedStats] = useState({
     totalReplies: 0,
+    totalLikes: 0,
+    totalReposts: 0,
     engagementRate: 0
   });
   
+  // 缓存数据的引用
+  const cachedDataRef = useRef<DashboardData | null>(null);
+  
   // 获取Dashboard数据
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    setError(null);
-    
+  const fetchDashboardData = async (isBackgroundUpdate = false) => {
     try {
+      if (isBackgroundUpdate) {
+        setBackgroundLoading(true);
+        // 如果有缓存数据，先显示缓存数据
+        if (cachedDataRef.current) {
+          setDashboardData(cachedDataRef.current);
+          setDashboardLoading(false);
+        }
+      } else {
+        setDashboardLoading(true);
+      }
+      setError(null);
+      
       const data = await dashboardService.getDashboardData();
+      
+      // 更新缓存
+      cachedDataRef.current = data;
       setDashboardData(data);
-    } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
-      setError('Failed to load dashboard data');
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err);
+      setError('Failed to load dashboard data. Please try again.');
     } finally {
-      setLoading(false);
+      setDashboardLoading(false);
+      setBackgroundLoading(false);
     }
   };
 
@@ -91,7 +121,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
   // 组件加载时获取Dashboard数据
   useEffect(() => {
-    fetchDashboardData();
+    // 首次加载时，如果有缓存数据则优先显示
+    if (dashboardData) {
+      // 已有缓存数据，后台更新
+      cachedDataRef.current = dashboardData;
+      fetchDashboardData(true);
+    } else {
+      // 没有缓存数据时正常加载
+      fetchDashboardData();
+    }
   }, []);
 
   // Number animation effect
@@ -182,6 +220,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     onNavigate?.(section);
   };
 
+  // Handle account click to open Twitter profile
+  const handleAccountClick = (username: string) => {
+    const twitterUrl = `https://x.com/${username}`;
+    window.open(twitterUrl, '_blank', 'noopener,noreferrer');
+  };
+
   // Loading component for individual sections
   const LoadingCard = ({ className = "" }: { className?: string }) => (
     <div className={`p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50 ${className}`}>
@@ -191,21 +235,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     </div>
   );
 
-  // Error component for individual sections
-  const ErrorCard = ({ message, onRetry, className = "" }: { message: string; onRetry: () => void; className?: string }) => (
-    <div className={`p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50 ${className}`}>
-      <div className="flex flex-col justify-center items-center h-20 text-center">
-        <AlertCircle className="mb-2 w-6 h-6 text-red-500" />
-        <p className="mb-2 text-sm text-red-600">{message}</p>
-        <button 
-          onClick={onRetry}
-          className="px-3 py-1 text-xs text-white bg-blue-600 rounded transition-colors hover:bg-blue-700"
-        >
-          Retry
-        </button>
-      </div>
+  // Error component for individual sections (without retry button)
+const ErrorCard = ({ message, className = "" }: { message: string; className?: string }) => (
+  <div className={`p-6 rounded-xl border backdrop-blur-sm bg-white/60 border-white/50 ${className}`}>
+    <div className="flex flex-col justify-center items-center h-20 text-center">
+      <AlertCircle className="mb-2 w-6 h-6 text-red-500" />
+      <p className="text-sm text-red-600">{message}</p>
     </div>
-  );
+  </div>
+);
 
   return (
     <div className="flex overflow-hidden relative flex-col h-full bg-gradient-to-br via-blue-50 to-indigo-50 rounded-lg border border-gray-200 shadow-sm from-slate-50">
@@ -223,19 +261,32 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <h1 className="flex items-center text-2xl font-bold text-gray-900">
               <Rocket className="mr-3 w-7 h-7 text-blue-600" />
               Dashboard
+              {backgroundLoading && (
+                <div className="ml-3 animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+              )}
             </h1>
             <p className="mt-1 text-gray-600">Welcome back, {getUserDisplayName()}! Click the Quick Actions below to quickly use features.</p>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
+            {error && (
+              <button
+                onClick={() => fetchDashboardData()}
+                disabled={loading || backgroundLoading}
+                className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg transition-all duration-200 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`w-4 h-4 ${(loading || backgroundLoading) ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </button>
+            )}
             <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${
-              dashboardData?.all_systems_active 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-red-100 text-red-800'
+              true
+                ? 'text-green-800 bg-green-100' 
+                : 'text-red-800 bg-red-100'
             }`}>
               <div className={`w-2 h-2 rounded-full animate-pulse ${
-                dashboardData?.all_systems_active ? 'bg-green-500' : 'bg-red-500'
+                true? 'bg-green-500' : 'bg-red-500'
               }`}></div>
-              <span>{dashboardData?.all_systems_active ? 'All Systems Active' : 'System Issues'}</span>
+              <span>{true ? 'All Systems Active' : 'System Issues'}</span>
             </div>
           </div>
         </div>
@@ -248,12 +299,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           {loading || error ? (
             <>
               {error ? (
-                <ErrorCard message="Failed to load metrics" onRetry={fetchDashboardData} />
+                <ErrorCard message="Failed to load metrics" />
               ) : (
                 <LoadingCard />
               )}
               {error ? (
-                <ErrorCard message="Failed to load metrics" onRetry={fetchDashboardData} />
+                <ErrorCard message="Failed to load metrics" />
               ) : (
                 <LoadingCard />
               )}
@@ -311,16 +362,117 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </button>
           </div>
           
-          <div className="py-8 text-center">
-            <Users className="mx-auto mb-3 w-12 h-12 text-gray-400" />
-            <p className="mb-4 text-gray-500">Quick access to manage inspiration accounts</p>
-            <button 
-              onClick={() => onNavigate?.('Inspiration Accounts')}
-              className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700"
-            >
-              Manage Accounts
-            </button>
-          </div>
+          {loading ? (
+            <div className="flex justify-center items-center h-32">
+              <Loader className="w-6 h-6 text-blue-500 animate-spin" />
+            </div>
+          ) : error ? (
+            <div className="flex flex-col justify-center items-center h-32 text-center">
+              <AlertCircle className="mb-2 w-6 h-6 text-red-500" />
+              <p className="text-sm text-red-600">Failed to load accounts</p>
+            </div>
+          ) : dashboardData?.inspiration_accounts_overview?.accounts && dashboardData.inspiration_accounts_overview.accounts.length > 0 ? (
+            <div className="space-y-4">
+              {/* Account List */}
+              <div className="space-y-3">
+                {dashboardData.inspiration_accounts_overview.accounts.slice(0, 4).map((account) => (
+                  <div
+                    key={account.id}
+                    className="flex items-center p-3 space-x-4 rounded-lg border border-gray-100 transition-all duration-200 hover:bg-white/80 hover:shadow-sm group"
+                  >
+                    {/* Profile Image */}
+                    <div className="relative flex-shrink-0">
+                      {account.profile_image_url ? (
+                        <img
+                          src={account.profile_image_url}
+                          alt={account.display_name}
+                          className="object-cover w-10 h-10 rounded-full border-2 border-white shadow-sm"
+                        />
+                      ) : (
+                        <div className="flex justify-center items-center w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full border-2 border-white shadow-sm">
+                          <span className="text-sm font-semibold text-white">
+                            {account.display_name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      {account.verified && (
+                        <CheckCircle className="absolute -right-1 -bottom-1 w-4 h-4 text-blue-500 bg-white rounded-full" />
+                      )}
+                    </div>
+
+                    {/* Account Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2">
+                        <h4 className="font-medium text-gray-900 truncate">
+                          {account.display_name}
+                        </h4>
+                        <div className="flex items-center space-x-1">
+                          {account.is_starred && (
+                            <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                          )}
+                          {account.is_target && (
+                            <Target className="w-3 h-3 text-green-500" />
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3 text-xs text-gray-500">
+                        <span>@{account.username}</span>
+                        <span>•</span>
+                        <span>{account.followers_count.toLocaleString()} followers</span>
+                      </div>
+                    </div>
+
+                    {/* Action Indicator */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAccountClick(account.username);
+                      }}
+                      className="flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                      aria-label={`Open ${account.display_name}'s Twitter profile`}
+                    >
+                      <ChevronRight className="w-4 h-4 text-gray-400 transition-colors group-hover:text-gray-600" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Summary Stats */}
+              <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+                <div className="flex items-center space-x-4 text-sm text-gray-600">
+                  <span className="flex items-center">
+                    <Users className="mr-1 w-4 h-4" />
+                    {dashboardData.inspiration_accounts_overview.total_count} total
+                  </span>
+                  <span className="flex items-center">
+                    <Star className="mr-1 w-4 h-4 text-yellow-500" />
+                    {dashboardData.inspiration_accounts_overview.starred_count} starred
+                  </span>
+                  <span className="flex items-center">
+                    <Target className="mr-1 w-4 h-4 text-green-500" />
+                    {dashboardData.inspiration_accounts_overview.target_count} targeted
+                  </span>
+                </div>
+                <button 
+                  onClick={() => onNavigate?.('Inspiration Accounts')}
+                  className="px-3 py-1 text-xs text-white bg-blue-600 rounded transition-colors hover:bg-blue-700"
+                >
+                  Manage Accounts
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="py-8 text-center">
+              <Users className="mx-auto mb-3 w-12 h-12 text-gray-400" />
+              <p className="mb-4 text-gray-500">No inspiration accounts found</p>
+              <button 
+                onClick={() => onNavigate?.('Inspiration Accounts')}
+                className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700"
+              >
+                Add Accounts
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Quick Actions */}
