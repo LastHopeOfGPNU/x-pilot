@@ -7,6 +7,7 @@ import CapabilitySelector from './CapabilitySelector';
 import {  useCopilotChatHeadless_c, useCopilotContext } from '@copilotkit/react-core';
 import { useAIAssistantActions } from './actions';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAIAgentState } from './ShareState';
 import {
   Message,
   AIAssistantProps
@@ -33,6 +34,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   // Get user display name - memoized to prevent unnecessary re-renders
   const userDisplayName = useMemo(() => getUserDisplayName(user), [user]);
 
+  // Local UI state management
   const [inputValue, setInputValue] = useState('');
   const [isMinimized, setIsMinimized] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -40,13 +42,28 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const [showCapabilitySelector, setShowCapabilitySelector] = useState(false);
   const [selectedCapabilityIndex, setSelectedCapabilityIndex] = useState(0);
   const [selectorPosition, setSelectorPosition] = useState({ top: 0, left: 0 });
-  const [error, setError] = useState<string | null>(null);
   const [selectedCapability, setSelectedCapability] = useState<typeof CAPABILITY_OPTIONS[0] | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
-  const [shouldStopRetry, setShouldStopRetry] = useState(false);
-  const [isSending, setIsSending] = useState(false); // 添加发送状态防止重复点击
+
+  // Use shared agent state management for core agent states
+  const {
+    state,
+    setError,
+    setIsLoading,
+    setRetryCount,
+    setShouldStopRetry,
+    setIsSending
+  } = useAIAgentState();
+
+  // Destructure agent state for easier access
+  const {
+    error,
+    isLoading,
+    retryCount,
+    shouldStopRetry,
+    isSending
+  } = state;
+
   // CopilotKit integration - no need for manual retry logic
 
   // CopilotKit chat integration
@@ -210,8 +227,13 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
 
   // Handle submit with retry mechanism - 使用useCallback优化性能
   const handleSubmit = useCallback(async (message?: string, currentRetryCount = 0) => {
-    const messageToSend = message || inputValue.trim();
+    let messageToSend = message || inputValue.trim();
     if (!messageToSend || (isLoading && currentRetryCount === 0) || copilotLoading || isSending) return;
+    
+    // 如果有选中的能力，在消息开头添加工具名称
+    if (selectedCapability && currentRetryCount === 0) {
+      messageToSend = `${selectedCapability.label} ${messageToSend}`;
+    }
     
     // 防止重复发送
     if (currentRetryCount === 0) {
@@ -224,9 +246,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       setRetryCount(0);
       setShouldStopRetry(false);
 
-      // Clear input and capability
+      // Clear input only, keep capability selected
       setInputValue('');
-      setSelectedCapability(null);
     }
 
     setIsLoading(true);
@@ -279,7 +300,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
         setIsSending(false);
       }
     }
-  }, [inputValue, isLoading, copilotLoading, isSending, sendMessage, shouldStopRetry, retryCount]);
+  }, [inputValue, isLoading, copilotLoading, isSending, sendMessage, shouldStopRetry, retryCount, selectedCapability]);
 
   // 新增聊天窗口调用
   const handleNewChat = () => {
@@ -603,6 +624,16 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                           {message.role === 'user' ? userDisplayName : 'X-Pilot'}
                         </div>
 
+                        {/* @reply 标签 - 用户和AI消息都显示 */}
+                        {message.content.startsWith('@reply') && (
+                          <div className={`mb-2 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full border border-green-200">
+                              <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
+                              Auto Reply
+                            </span>
+                          </div>
+                        )}
+
                         {/* 消息气泡 */}
                         <div
                           className={`p-3 rounded-lg break-words whitespace-pre-wrap max-w-full overflow-wrap-anywhere ${message.role === 'user'
@@ -626,7 +657,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                             <StatusMessage content={message.content} />
                           ) : (
                             <div className="break-words">
-                              <ReactMarkdown>{message.content}</ReactMarkdown>
+                              <ReactMarkdown>
+                                {message.content.startsWith('@reply ') 
+                                  ? message.content.substring(7) // 移除 "@reply " 前缀
+                                  : message.content
+                                }
+                              </ReactMarkdown>
                               {/* {message.role === "assistant" && message.generativeUI?.()} */}
                             </div>
                           )}

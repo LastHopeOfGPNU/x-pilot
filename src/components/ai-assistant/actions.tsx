@@ -12,7 +12,7 @@ export const useAIAssistantActions = () => {
         type: "string[]",
         description: "生成的计划列表，计划项目至少有三个，计划使用的语言要和用户输入语言保持一致",
         required: true
-      }
+      },
     ],
     handler: async (...rest) => {
       console.log(rest)
