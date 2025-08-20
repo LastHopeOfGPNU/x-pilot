@@ -77,6 +77,7 @@ const AppContent: React.FC = () => {
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [apiBaseUrl, setApiBaseUrl] = useState<string>(apiConfigService.getApiBaseUrl());
   const [showCopilotDevConsole, setShowCopilotDevConsole] = useState(devConfigService.getShowCopilotDevConsole());
+  const [copilotKitRuntimeUrl, setCopilotKitRuntimeUrl] = useState<string>(devConfigService.getCopilotKitRuntimeUrl());
 
   // 动态生成 CopilotKit headers，包含 Bearer token
   const copilotHeaders = useMemo(() => {
@@ -146,6 +147,8 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const handleApiUrlChange = (newUrl: string) => {
       setApiBaseUrl(newUrl);
+      // API配置变更时，同时更新CopilotKit URL
+      setCopilotKitRuntimeUrl(devConfigService.getCopilotKitRuntimeUrl());
     };
     
     apiConfigService.addListener(handleApiUrlChange);
@@ -159,6 +162,7 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const handleDevConfigChange = (config: any) => {
       setShowCopilotDevConsole(config.showCopilotDevConsole);
+      setCopilotKitRuntimeUrl(config.copilotKitRuntimeUrl);
     };
     
     devConfigService.addListener(handleDevConfigChange);
@@ -363,7 +367,7 @@ const AppContent: React.FC = () => {
 
   return (
     <CopilotKit 
-      runtimeUrl={`${apiBaseUrl}/copilotkit`}
+      runtimeUrl={copilotKitRuntimeUrl}
       agent='chat_agent'
       showDevConsole={showCopilotDevConsole}
       publicLicenseKey={import.meta.env.VITE_COPILOTKIT_PUBLIC_LICENSE_KEY}

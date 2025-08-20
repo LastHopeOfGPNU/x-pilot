@@ -61,8 +61,23 @@ class DevConfigService {
    * 获取CopilotKit Runtime URL
    */
   public getCopilotKitRuntimeUrl(): string {
-    const apiBaseUrl = apiConfigService.getApiBaseUrl();
-    return `${apiBaseUrl}/copilotkit`;
+    // 在生产环境中，使用API基础URL
+    if (import.meta.env.PROD) {
+      const apiBaseUrl = apiConfigService.getApiBaseUrl();
+      return `${apiBaseUrl}/copilotkit`;
+    }
+    
+    // 在开发环境中，CopilotKit有独立的端口配置
+    // dev环境: localhost:4000, 生产环境API: 使用API基础URL
+    const isUsingLocalApi = apiConfigService.isUsingLocalApi();
+    if (isUsingLocalApi) {
+      // 本地开发环境，CopilotKit使用4000端口
+      return 'http://localhost:4000/copilotkit';
+    } else {
+      // 使用生产环境API时，CopilotKit路径跟随API
+      const apiBaseUrl = apiConfigService.getApiBaseUrl();
+      return `${apiBaseUrl}/copilotkit`;
+    }
   }
 
   /**
