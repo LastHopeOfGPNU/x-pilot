@@ -4,8 +4,9 @@ import { useCopilotAction } from '@copilotkit/react-core';
 export const useAIAssistantActions = () => {
   // 更新计划状态的Action
   useCopilotAction({
-    name: "generationPlan",
-    description: "每次用户请求回复指令时，首先使用这个工具生成计划，根据用户指令和当前状态生成计划列表，计划使用的语言要和用户输入语言保持一致。后续工具的调用需要等用户确认使用计划后再调用。",
+    name: "replyPlan",
+    available: "remote",
+    description: "每次用户请求使用reply_tool工具回复指令时，首先使用这个工具生成计划，根据用户指令和当前状态生成计划列表，计划使用的语言要和用户输入语言保持一致。后续reply_tool工具的调用需要等用户确认使用计划后再调用。",
     parameters: [
       {
         name: "plans",
@@ -14,7 +15,7 @@ export const useAIAssistantActions = () => {
         required: true
       },
     ],
-    renderAndWaitForResponse: ({ respond, args, status }) => {
+    renderAndWaitForResponse: ({ args, respond, status }) => {
       if (status === "complete") {
         return <div>
           <p>Generation Plan completed...</p>
@@ -58,13 +59,13 @@ export const useAIAssistantActions = () => {
           
           {/* 操作按钮区域 - 响应式布局 */}
           <div className="flex flex-col gap-3 justify-center items-center sm:flex-row sm:gap-4">
-            <button onClick={() => respond?.(args.name)} className="w-full sm:w-auto px-8 py-3 bg-[#4792E6] text-white rounded-xl hover:bg-[#4792E6]/90 active:bg-[#4792E6]/80 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center space-x-2">
+            <button onClick={() => respond?.("EXECUTE")} className="w-full sm:w-auto px-8 py-3 bg-[#4792E6] text-white rounded-xl hover:bg-[#4792E6]/90 active:bg-[#4792E6]/80 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center space-x-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               <span>Execute</span>
             </button>
-            <button onClick={() => respond?.(null)} className="flex justify-center items-center px-8 py-3 space-x-2 w-full font-semibold text-gray-700 bg-gray-100 rounded-xl border border-gray-200 transition-all duration-200 sm:w-auto hover:bg-gray-200 active:bg-gray-300 hover:border-gray-300">
+            <button onClick={() => respond?.('CANCEL')} className="flex justify-center items-center px-8 py-3 space-x-2 w-full font-semibold text-gray-700 bg-gray-100 rounded-xl border border-gray-200 transition-all duration-200 sm:w-auto hover:bg-gray-200 active:bg-gray-300 hover:border-gray-300">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
