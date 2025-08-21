@@ -38,25 +38,25 @@ interface EngagementsListResponse {
 }
 
 interface PostReplyRequest {
-  reply_id: string;
+  engagement_id: string;
   content: string;
 }
 
 interface PostReplyResponse {
   success: boolean;
   message: string;
-  tweet_id: string;
-  posted_at: string;
+  tweet_id?: string;
+  posted_at?: string;
 }
 
 interface RejectReplyRequest {
-  reply_id: string;
+  engagement_id: string;
 }
 
 interface RejectReplyResponse {
   success: boolean;
   message: string;
-  rejected_at: string;
+  rejected_at?: string;
 }
 
 class EngagementService {
