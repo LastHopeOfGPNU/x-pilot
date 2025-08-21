@@ -1,12 +1,28 @@
 // AI Assistant related type definitions
 
+// 工具调用类型
+export interface ToolCall {
+  id: string;
+  function: {
+    name: string;
+    arguments: string;
+  };
+  type: 'function';
+}
+
 // 消息类型
 export interface Message {
   id: string;
   content: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system' | 'tool';
   timestamp?: string;
   planData?: PlanData;
+  generativeUI?: () => JSX.Element;
+  // 工具调用相关字段
+  toolCalls?: ToolCall[];
+  toolCallId?: string;
+  toolName?: string;
+  name?: string;
 }
 
 // 计划数据类型

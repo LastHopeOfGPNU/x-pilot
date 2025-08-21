@@ -352,7 +352,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
   const handleRejectReply = async (cardId: string) => {
     try {
       // 调用API拒绝回复
-      await engagementService.rejectReply({ reply_id: cardId });
+      await engagementService.rejectReply({ engagement_id: cardId });
       
       // 从列表中移除该项
       setAutoReplyData(prev => prev.filter(card => card.id !== cardId));
@@ -367,7 +367,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
     try {
       // 调用API发布回复
       await engagementService.postReply({ 
-        reply_id: cardId, 
+        engagement_id: cardId, 
         content: reply 
       });
       

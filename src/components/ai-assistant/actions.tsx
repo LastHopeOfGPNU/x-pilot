@@ -1,4 +1,5 @@
 import { useCopilotAction } from '@copilotkit/react-core';
+import { MessageSquare, CheckCircle, XCircle, List, Play, X } from 'lucide-react';
 
 // 自定义hook来定义CopilotKit Actions
 export const useAIAssistantActions = () => {
@@ -15,65 +16,149 @@ export const useAIAssistantActions = () => {
         required: true
       },
     ],
-    renderAndWaitForResponse: ({ args, respond, status }) => {
+    renderAndWaitForResponse: ({ status, args, respond }) => {
+      // 根据CopilotKit文档，renderAndWaitForResponse的status有三个状态：'inProgress'、'executing'、'complete'
+      console.log('render', status, args)
+      const getStatusDisplay = (currentStatus: string) => {
+        switch (currentStatus) {
+          case "inProgress":
+            return {
+              icon: <MessageSquare className="w-5 h-5 text-blue-600 animate-pulse" />,
+              text: "Generating Plan",
+              color: "text-blue-800",
+              bgColor: "from-blue-50 to-indigo-50",
+              borderColor: "border-blue-200"
+            };
+          case "executing":
+            return {
+              icon: <MessageSquare className="w-5 h-5 text-orange-600" />,
+              text: "Awaiting Confirmation",
+              color: "text-orange-800",
+              bgColor: "from-orange-50 to-amber-50",
+              borderColor: "border-orange-200"
+            };
+          case "complete":
+            return {
+              icon: <CheckCircle className="w-5 h-5 text-green-600" />,
+              text: "Plan Generated, Execution Started",
+              color: "text-green-800",
+              bgColor: "from-green-50 to-emerald-50",
+              borderColor: "border-green-200"
+            };
+          default:
+            return {
+              icon: <MessageSquare className="w-5 h-5 text-gray-600" />,
+              text: "Ready",
+              color: "text-gray-800",
+              bgColor: "from-gray-50 to-slate-50",
+              borderColor: "border-gray-200"
+            };
+        }
+      };
+
+      const statusDisplay = getStatusDisplay(status);
+      // executing状态是等待用户确认的时机，complete状态是执行完成
+      const showButtons = status === "executing";
+      const isCompleted = status === "complete";
+
       if (status === "complete") {
-        return <div>
-          <p>Generation Plan completed...</p>
-        </div>;
+        return (
+          <div className={`bg-gradient-to-r ${statusDisplay.bgColor} border ${statusDisplay.borderColor} rounded-lg p-4 mb-4`}>
+            <div className="flex gap-2 items-center mb-2">
+              {statusDisplay.icon}
+              <span className={`font-medium ${statusDisplay.color}`}>{statusDisplay.text}</span>
+            </div>
+            <p className="text-sm text-green-700">Auto Reply Plan has been generated and execution has started.</p>
+          </div>
+        );
       }
 
-      const { plans } = args || {};
-
       return (
-        <div className="p-6 mx-auto max-w-2xl bg-white rounded-xl border border-gray-100 shadow-lg">
-          {/* 标题区域 */}
-          <div className="mb-6">
-            <h2 className="flex items-center mb-2 text-xl font-bold text-gray-800">
-              <div className="w-3 h-3 bg-[#4792E6] rounded-full mr-3 animate-pulse"></div>
-              Auto Reply Plan
-            </h2>
-            <div className="h-0.5 bg-gradient-to-r from-[#4792E6] to-transparent rounded-full"></div>
+        <div className={`bg-gradient-to-r ${statusDisplay.bgColor} border ${statusDisplay.borderColor} rounded-lg p-6 mb-4`}>
+          <div className="flex gap-3 items-center mb-4">
+            {statusDisplay.icon}
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-blue-900">Auto Reply Plan</h3>
+              <p className={`text-sm ${statusDisplay.color} mt-1`}>Status: {statusDisplay.text}</p>
+            </div>
           </div>
-          
-          {/* 计划步骤列表 */}
-          <div className="mb-8 space-y-4">
-            {plans?.map((plan, index) => (
-              <div key={index} className="relative group">
-                <div className="flex items-start space-x-4 p-4 bg-gradient-to-r from-[#4792E6]/5 to-transparent rounded-xl border border-[#4792E6]/10 hover:border-[#4792E6]/20 transition-all duration-200 hover:shadow-md">
-                  <div className="flex-shrink-0 w-8 h-8 bg-[#4792E6] text-white rounded-full flex items-center justify-center text-sm font-semibold shadow-lg">
-                    {index + 1}
+
+          {args.plans && args.plans.length > 0 && (
+            <div className="mb-6">
+              <h4 className="flex gap-2 items-center mb-3 text-sm font-medium text-blue-800">
+                <List className="w-4 h-4" />
+                {isCompleted ? "Executed Plans" : "Generated Plans"} ({args.plans.length})
+              </h4>
+              <div className="space-y-3">
+                {args.plans.map((plan: any, index: number) => (
+                  <div
+                    key={index}
+                    className={`bg-white/70 backdrop-blur-sm border rounded-lg p-4 transition-all duration-200 ${isCompleted
+                        ? "border-green-100 bg-green-50/30"
+                        : "border-blue-100 hover:shadow-md hover:border-blue-200"
+                      }`}
+                  >
+                    <div className="flex gap-3 items-start">
+                      <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5 ${isCompleted
+                          ? "bg-green-100 text-green-600"
+                          : "bg-blue-100 text-blue-600"
+                        }`}>
+                        {isCompleted ? (
+                          <CheckCircle className="w-3 h-3" />
+                        ) : (
+                          <span className="text-xs font-medium">{index + 1}</span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm leading-relaxed text-gray-800">{plan}</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 leading-relaxed text-gray-700">
-                    <p className="text-sm font-medium">
-                      {plan}
-                    </p>
-                  </div>
-                </div>
-                {/* 连接线 */}
-                {index < plans.length - 1 && (
-                  <div className="absolute left-7 top-12 w-0.5 h-4 bg-gradient-to-b from-[#4792E6]/30 to-transparent"></div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
+
+          {/* 在executing状态下显示确认按钮 */}
+          {showButtons && (
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={() => respond("EXECUTE")}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                <Play className="w-4 h-4" />
+                Execute Plan
+              </button>
+              <button
+                onClick={() => respond("CANCEL")}
+                className="flex flex-1 gap-2 justify-center items-center px-6 py-3 font-medium text-gray-700 bg-gray-100 rounded-lg transition-all duration-200 sm:flex-initial hover:bg-gray-200"
+              >
+                <X className="w-4 h-4" />
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {/* 显示当前状态信息 */}
+          {status === "inProgress" && (
+            <div className="p-3 rounded-lg border border-blue-100 bg-white/50">
+              <div className="flex gap-2 items-center text-sm text-blue-700">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                Generating plan...
+              </div>
+            </div>
+          )}
           
-          {/* 操作按钮区域 - 响应式布局 */}
-          <div className="flex flex-col gap-3 justify-center items-center sm:flex-row sm:gap-4">
-            <button onClick={() => respond?.("EXECUTE")} className="w-full sm:w-auto px-8 py-3 bg-[#4792E6] text-white rounded-xl hover:bg-[#4792E6]/90 active:bg-[#4792E6]/80 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center space-x-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>Execute</span>
-            </button>
-            <button onClick={() => respond?.('CANCEL')} className="flex justify-center items-center px-8 py-3 space-x-2 w-full font-semibold text-gray-700 bg-gray-100 rounded-xl border border-gray-200 transition-all duration-200 sm:w-auto hover:bg-gray-200 active:bg-gray-300 hover:border-gray-300">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              <span>Cancel</span>
-            </button>
-          </div>
+          {isCompleted && (
+            <div className="p-3 rounded-lg border border-green-100 bg-white/50">
+              <div className="flex gap-2 items-center text-sm text-green-700">
+                <CheckCircle className="w-4 h-4" />
+                Plan generated, execution started
+              </div>
+            </div>
+          )}
         </div>
-      )
+      );
     },
   });
 };
