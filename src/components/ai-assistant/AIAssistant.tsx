@@ -24,6 +24,7 @@ import {
   getNextCapabilityIndex,
   createStatusMessage,
 } from '../../utils/aiAssistantUtils';
+import { processMessages } from './messageProcessor';
 
 // 类型定义已移至 ../types/aiAssistant.ts
 // 常量定义已移至 ../constants/aiAssistant.ts
@@ -340,23 +341,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // 转换CopilotKit消息格式，保持用户和AI消息的对应关系
-  const convertCopilotMessages = (copilotMessages: any[]) => {
-    return copilotMessages
-      .filter(msg => msg && msg.content !== undefined)
-      .map(msg => {
-        return {
-          ...msg,
-          id: msg.id || generateMessageId(),
-          content: msg.content || '',
-          timestamp: msg.timestamp || new Date().toISOString()
-        };
-      })
-  };
-
-  // 使用CopilotKit消息作为主要消息源，本地消息仅用于临时显示
-  const copilotKitMessages = convertCopilotMessages(copilotMessages || []);
-  const allMessages = copilotKitMessages.length > 0 ? copilotKitMessages : messages;
+  // 处理消息逻辑
+  const allMessages = useMemo(() => {
+    return processMessages(copilotMessages, messages);
+  }, [copilotMessages, messages])
 
   // 监听消息变化，自动滚动到底部
   useEffect(() => {
