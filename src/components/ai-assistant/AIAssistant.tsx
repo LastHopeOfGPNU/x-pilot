@@ -39,6 +39,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [isExpandedByButton, setIsExpandedByButton] = useState(false); // 区分是否通过按钮展开
   const [showCapabilitySelector, setShowCapabilitySelector] = useState(false);
   const [selectedCapabilityIndex, setSelectedCapabilityIndex] = useState(0);
   const [selectorPosition, setSelectorPosition] = useState({ top: 0, left: 0 });
@@ -90,6 +91,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   // 处理容器焦点
   const handleContainerFocus = () => {
     setIsFocused(true);
+    // 如果不是通过按钮展开的，点击时可以展开
+    if (!isExpanded && !isExpandedByButton) {
+      // 这里不设置展开，因为展开逻辑由CSS的isFocused控制
+    }
   };
 
   // 处理容器失去焦点
@@ -384,8 +389,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       }
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsFocused(false);
-        // 点击外部时，如果面板是展开状态，则收缩回初始状态
-        if (isExpanded) {
+        // 点击外部时，只有通过点击展开的面板才会收缩
+        // 通过按钮展开的面板不会因为点击外部而收缩
+        if (isExpanded && !isExpandedByButton) {
           setIsExpanded(false);
         }
       }
@@ -395,7 +401,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isExpanded]);
+  }, [isExpanded, isExpandedByButton]);
 
   // 渲染选中的能力标签
   const renderSelectedCapability = () => {
@@ -463,7 +469,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                 <Plus size={18} className="text-gray-600" />
               </button>
               <button
-                onClick={() => setIsExpanded(!isExpanded)}
+                onClick={() => {
+                  const newExpandedState = !isExpanded;
+                  setIsExpanded(newExpandedState);
+                  setIsExpandedByButton(newExpandedState); // 记录是通过按钮展开的
+                }}
                 className="p-2 rounded-lg transition-colors hover:bg-gray-100"
                 aria-label={isExpanded ? "Minimize panel" : "Expand panel"}
               >
