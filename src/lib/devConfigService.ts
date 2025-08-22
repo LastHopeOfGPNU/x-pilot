@@ -33,6 +33,20 @@ class DevConfigService {
   }
 
   /**
+   * 获取是否显示所有消息（包括隐藏的消息）
+   */
+  public getShowAllMessages(): boolean {
+    // 生产环境始终不显示隐藏消息
+    if (import.meta.env.PROD) {
+      return false;
+    }
+    
+    // 从localStorage读取用户设置，默认为false（开发环境默认不显示隐藏消息）
+    const saved = localStorage.getItem('dev_show_all_messages');
+    return saved ? saved === 'true' : false;
+  }
+
+  /**
    * 设置CopilotKit开发控制台显示状态
    */
   public setShowCopilotDevConsole(show: boolean): void {
@@ -48,12 +62,37 @@ class DevConfigService {
   }
 
   /**
+   * 设置是否显示所有消息（包括隐藏的消息）
+   */
+  public setShowAllMessages(show: boolean): void {
+    // 生产环境不允许设置
+    if (import.meta.env.PROD) {
+      return;
+    }
+
+    localStorage.setItem('dev_show_all_messages', show.toString());
+    
+    // 通知所有监听器
+    this.notifyListeners();
+  }
+
+  /**
    * 切换CopilotKit开发控制台显示状态
    */
   public toggleCopilotDevConsole(): boolean {
     const current = this.getShowCopilotDevConsole();
     const newValue = !current;
     this.setShowCopilotDevConsole(newValue);
+    return newValue;
+  }
+
+  /**
+   * 切换是否显示所有消息
+   */
+  public toggleShowAllMessages(): boolean {
+    const current = this.getShowAllMessages();
+    const newValue = !current;
+    this.setShowAllMessages(newValue);
     return newValue;
   }
 
@@ -86,7 +125,8 @@ class DevConfigService {
   public getDevConfig(): DevConfig {
     return {
       showCopilotDevConsole: this.getShowCopilotDevConsole(),
-      copilotKitRuntimeUrl: this.getCopilotKitRuntimeUrl()
+      copilotKitRuntimeUrl: this.getCopilotKitRuntimeUrl(),
+      showAllMessages: this.getShowAllMessages()
     };
   }
 
@@ -124,6 +164,7 @@ class DevConfigService {
     }
 
     localStorage.removeItem('dev_show_copilot_console');
+    localStorage.removeItem('dev_show_all_messages');
     this.notifyListeners();
   }
 }
@@ -132,6 +173,7 @@ class DevConfigService {
 export interface DevConfig {
   showCopilotDevConsole: boolean;
   copilotKitRuntimeUrl: string;
+  showAllMessages: boolean;
 }
 
 // 导出单例实例

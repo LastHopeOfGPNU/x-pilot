@@ -121,20 +121,20 @@ export const useAIAssistantActions = () => {
 
           {/* 在executing状态下显示确认按钮 */}
           {showButtons && (
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-3">
               <button
                 onClick={() => respond("EXECUTE")}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                className="w-full sm:flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-3 py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm"
               >
-                <Play className="w-4 h-4" />
-                Execute Plan
+                <Play className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">Execute Plan</span>
               </button>
               <button
                 onClick={() => respond("CANCEL")}
-                className="flex flex-1 gap-2 justify-center items-center px-6 py-3 font-medium text-gray-700 bg-gray-100 rounded-lg transition-all duration-200 sm:flex-initial hover:bg-gray-200"
+                className="w-full sm:w-auto sm:px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 text-sm"
               >
-                <X className="w-4 h-4" />
-                Cancel
+                <X className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">Cancel</span>
               </button>
             </div>
           )}

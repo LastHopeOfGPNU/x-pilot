@@ -25,6 +25,7 @@ import {
   createStatusMessage,
 } from '../../utils/aiAssistantUtils';
 import { processMessages } from './messageProcessor';
+import { devConfigService } from '../../lib/devConfigService';
 
 // 类型定义已移至 ../types/aiAssistant.ts
 // 常量定义已移至 ../constants/aiAssistant.ts
@@ -46,6 +47,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const [selectorPosition, setSelectorPosition] = useState({ top: 0, left: 0 });
   const [selectedCapability, setSelectedCapability] = useState<typeof CAPABILITY_OPTIONS[0] | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [showAllMessages, setShowAllMessages] = useState(devConfigService.getShowAllMessages());
 
   // Use shared agent state management for core agent states
   const {
@@ -595,9 +597,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                 {allMessages.map((message, index) => (
                   <div
                     key={message.id}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4 group`}
+                    className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'} mb-4 group max-w-[90%] ${message.role === 'user' ? 'ml-auto' : 'mr-auto'}`}
                   >
-                    <div className={`flex ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'} items-start ${message.role === 'user' ? 'space-x-reverse space-x-3' : 'space-x-3'} max-w-[80%]`}>
+                    {/* 第一行：头像、昵称 */}
+                    <div className={`flex items-center gap-2 mb-1 ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                       {/* 头像 */}
                       <div className="flex-shrink-0">
                         {message.role === 'user' ? (
@@ -611,57 +614,72 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         )}
                       </div>
 
-                      {/* 消息内容区域 */}
-                      <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
-                        {/* 昵称 */}
-                        <div className="mb-1 text-xs text-gray-500">
-                          {message.role === 'user' ? userDisplayName : 'X-Pilot'}
-                        </div>
+                      {/* 昵称 */}
+                      <div className="text-xs text-gray-500">
+                        {message.role === 'user' ? userDisplayName : 'X-Pilot'}
+                      </div>
+                    </div>
 
-                        {/* @reply 标签 - 用户和AI消息都显示 */}
-                        {message.content?.startsWith('@reply') && (
-                          <div className={`mb-2 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full border border-green-200">
-                              <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
-                              Auto Reply
-                            </span>
+                    {/* 第二行：事件状态 */}
+                    {message.content?.startsWith('@reply') && (
+                      <div className={`mb-1 ${message.role === 'user' ? 'mr-2' : 'ml-2'}`}>
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full border border-green-200">
+                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
+                          Auto Reply
+                        </span>
+                      </div>
+                    )}
+                    
+                    {/* 隐藏消息标识 */}
+                    {message.hidden && import.meta.env.DEV && (
+                      <div className={`mb-1 ${message.role === 'user' ? 'mr-2' : 'ml-2'}`}>
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full border border-gray-300">
+                          <span className="w-1.5 h-1.5 bg-gray-500 rounded-full mr-1.5"></span>
+                          Hidden
+                        </span>
+                      </div>
+                    )}
+
+                    {/* 第三行：消息气泡 */}
+                    <div className={`${message.role === 'user' ? 'mr-2' : 'ml-2'}`}>
+                      <div
+                        className={`p-3 rounded-lg break-words whitespace-pre-wrap min-w-0 overflow-hidden ${
+                          message.hidden && import.meta.env.DEV
+                            ? message.role === 'user'
+                              ? 'bg-gray-400 text-white rounded-tr-sm opacity-70'
+                              : 'bg-gray-100 text-gray-600 border border-gray-300 rounded-tl-sm opacity-70'
+                            : message.role === 'user'
+                              ? 'bg-[#4792E6] text-white rounded-tr-sm'
+                              : 'bg-white text-black border border-gray-200 rounded-tl-sm'
+                        }`}
+                        style={{
+                          wordBreak: 'break-word',
+                          overflowWrap: 'break-word',
+                          hyphens: 'auto',
+                          maxWidth: '100%'
+                        }}
+                      >
+                        {/* Check if this is a status message */}
+                        {message.role === 'assistant' && (
+                          message.content?.includes('Network retry') ||
+                          message.content?.includes('Network connection failed') ||
+                          message.content?.includes('网络异常') ||
+                          message.content?.includes('Response stopped by user') ||
+                          message.content?.includes('用户中止响应')
+                        ) ? (
+                          <StatusMessage content={message.content} />
+                        ) : (
+                          <div className="break-words">
+                            <ReactMarkdown>
+                              {message.content?.startsWith('@reply ')
+                                ? message.content.substring(7) // 移除 "@reply " 前缀
+                                : message.content
+                              }
+                            </ReactMarkdown>
+                            {/* This will render the tool-based HITL if it exists */}
+                            {message.role === "assistant" && message.generativeUI?.()}
                           </div>
                         )}
-
-                        {/* 消息气泡 */}
-                        <div
-                          className={`p-3 rounded-lg break-words whitespace-pre-wrap max-w-full overflow-wrap-anywhere ${message.role === 'user'
-                            ? 'bg-[#4792E6] text-white rounded-tr-sm'
-                            : 'bg-white text-black border border-gray-200 rounded-tl-sm'
-                            }`}
-                          style={{
-                            wordBreak: 'break-word',
-                            overflowWrap: 'break-word',
-                            hyphens: 'auto'
-                          }}
-                        >
-                          {/* Check if this is a status message */}
-                          {message.role === 'assistant' && (
-                            message.content?.includes('Network retry') ||
-                            message.content?.includes('Network connection failed') ||
-                            message.content?.includes('网络异常') ||
-                            message.content?.includes('Response stopped by user') ||
-                            message.content?.includes('用户中止响应')
-                          ) ? (
-                            <StatusMessage content={message.content} />
-                          ) : (
-                            <div className="break-words">
-                              <ReactMarkdown>
-                                {message.content?.startsWith('@reply ')
-                                  ? message.content.substring(7) // 移除 "@reply " 前缀
-                                  : message.content
-                                }
-                              </ReactMarkdown>
-                              {/* This will render the tool-based HITL if it exists */}
-                              {message.role === "assistant" && message.generativeUI?.()}
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -669,8 +687,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
 
                 {/* AI Loading Animation */}
                 {copilotLoading && (
-                  <div className="flex justify-start mb-4">
-                    <div className="flex items-start space-x-3 max-w-[80%]">
+                  <div className="flex flex-col items-start mb-4 group max-w-[90%] mr-auto">
+                    {/* 第一行：头像、昵称 */}
+                    <div className="flex gap-2 items-center mb-1">
                       {/* AI头像 */}
                       <div className="flex-shrink-0">
                         <div className="flex overflow-hidden justify-center items-center w-8 h-8 bg-white rounded-full border border-gray-200">
@@ -678,21 +697,20 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         </div>
                       </div>
 
-                      {/* 加载内容区域 */}
-                      <div className="flex flex-col items-start">
-                        {/* 昵称 */}
-                        <div className="mb-1 text-xs text-gray-500">
-                          X Pilot
-                        </div>
+                      {/* 昵称 */}
+                      <div className="text-xs text-gray-500">
+                        X Pilot
+                      </div>
+                    </div>
 
-                        {/* 加载气泡 */}
-                        <div className="p-3 bg-white rounded-lg rounded-tl-sm border border-gray-200">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                            <span className="ml-2 text-sm text-gray-600">Thinking...</span>
-                          </div>
+                    {/* 第二行：加载气泡 */}
+                    <div className="ml-2">
+                      <div className="p-3 bg-white rounded-lg rounded-tl-sm border border-gray-200">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                          <span className="ml-2 text-sm text-gray-600">Thinking...</span>
                         </div>
                       </div>
                     </div>
