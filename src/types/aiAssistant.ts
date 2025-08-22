@@ -23,6 +23,8 @@ export interface Message {
   toolCallId?: string;
   toolName?: string;
   name?: string;
+  // 开发环境消息显示控制
+  hidden?: boolean;
 }
 
 // 计划数据类型

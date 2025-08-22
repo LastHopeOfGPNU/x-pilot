@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Settings, Globe, Server, RotateCcw, Terminal } from 'lucide-react';
+import { Settings, Globe, Server, RotateCcw, Terminal, MessageSquare } from 'lucide-react';
 import { apiConfigService } from '../../lib/apiConfigService';
 import { devConfigService } from '../../lib/devConfigService';
 import { supabase } from '../../lib/supabase';
@@ -13,6 +13,7 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [showCopilotDevConsole, setShowCopilotDevConsole] = useState(false);
+  const [showAllMessages, setShowAllMessages] = useState(false);
   const [copilotKitRuntimeUrl, setCopilotKitRuntimeUrl] = useState('');
   const [position, setPosition] = useState({ x: 20, y: window.innerHeight - 150 });
   const [isDragging, setIsDragging] = useState(false);
@@ -29,6 +30,7 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
 
     setIsLocalEnv(apiConfigService.isUsingLocalApi());
     setShowCopilotDevConsole(devConfigService.getShowCopilotDevConsole());
+    setShowAllMessages(devConfigService.getShowAllMessages());
     setCopilotKitRuntimeUrl(devConfigService.getCopilotKitRuntimeUrl());
 
     const handleApiChange = () => {
@@ -38,6 +40,7 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
 
     const handleDevConfigChange = (config: any) => {
       setShowCopilotDevConsole(config.showCopilotDevConsole);
+      setShowAllMessages(config.showAllMessages);
     };
 
     apiConfigService.addListener(handleApiChange);
@@ -62,6 +65,11 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
   const handleCopilotDevConsoleToggle = () => {
     const newValue = devConfigService.toggleCopilotDevConsole();
     setShowCopilotDevConsole(newValue);
+  };
+
+  const handleShowAllMessagesToggle = () => {
+    const newValue = devConfigService.toggleShowAllMessages();
+    setShowAllMessages(newValue);
   };
 
   // 拖拽相关函数
@@ -309,6 +317,28 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showCopilotDevConsole ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 mt-2 rounded-md border border-gray-200 transition-all hover:border-gray-300 hover:bg-gray-50">
+                <div className="flex justify-between items-center">
+                  <div className="flex gap-2 items-center">
+                    <MessageSquare size={16} className="text-blue-600" />
+                    <div>
+                       <div className="text-sm font-medium text-gray-700">显示所有 AI Assistant 消息</div>
+                       <div className="text-xs text-gray-500">显示/隐藏 AI 助手中被过滤的消息（带灰色标识）</div>
+                     </div>
+                  </div>
+                  <button
+                    onClick={handleShowAllMessagesToggle}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${showAllMessages ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAllMessages ? 'translate-x-6' : 'translate-x-1'
                         }`}
                     />
                   </button>

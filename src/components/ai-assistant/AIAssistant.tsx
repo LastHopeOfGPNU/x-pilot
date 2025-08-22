@@ -25,6 +25,7 @@ import {
   createStatusMessage,
 } from '../../utils/aiAssistantUtils';
 import { processMessages } from './messageProcessor';
+import { devConfigService } from '../../lib/devConfigService';
 
 // 类型定义已移至 ../types/aiAssistant.ts
 // 常量定义已移至 ../constants/aiAssistant.ts
@@ -46,6 +47,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
   const [selectorPosition, setSelectorPosition] = useState({ top: 0, left: 0 });
   const [selectedCapability, setSelectedCapability] = useState<typeof CAPABILITY_OPTIONS[0] | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [showAllMessages, setShowAllMessages] = useState(devConfigService.getShowAllMessages());
 
   // Use shared agent state management for core agent states
   const {
@@ -627,14 +629,29 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         </span>
                       </div>
                     )}
+                    
+                    {/* 隐藏消息标识 */}
+                    {message.hidden && import.meta.env.DEV && (
+                      <div className={`mb-1 ${message.role === 'user' ? 'mr-2' : 'ml-2'}`}>
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full border border-gray-300">
+                          <span className="w-1.5 h-1.5 bg-gray-500 rounded-full mr-1.5"></span>
+                          Hidden
+                        </span>
+                      </div>
+                    )}
 
                     {/* 第三行：消息气泡 */}
                     <div className={`${message.role === 'user' ? 'mr-2' : 'ml-2'}`}>
                       <div
-                        className={`p-3 rounded-lg break-words whitespace-pre-wrap min-w-0 overflow-hidden ${message.role === 'user'
-                          ? 'bg-[#4792E6] text-white rounded-tr-sm'
-                          : 'bg-white text-black border border-gray-200 rounded-tl-sm'
-                          }`}
+                        className={`p-3 rounded-lg break-words whitespace-pre-wrap min-w-0 overflow-hidden ${
+                          message.hidden && import.meta.env.DEV
+                            ? message.role === 'user'
+                              ? 'bg-gray-400 text-white rounded-tr-sm opacity-70'
+                              : 'bg-gray-100 text-gray-600 border border-gray-300 rounded-tl-sm opacity-70'
+                            : message.role === 'user'
+                              ? 'bg-[#4792E6] text-white rounded-tr-sm'
+                              : 'bg-white text-black border border-gray-200 rounded-tl-sm'
+                        }`}
                         style={{
                           wordBreak: 'break-word',
                           overflowWrap: 'break-word',
@@ -672,7 +689,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                 {copilotLoading && (
                   <div className="flex flex-col items-start mb-4 group max-w-[90%] mr-auto">
                     {/* 第一行：头像、昵称 */}
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex gap-2 items-center mb-1">
                       {/* AI头像 */}
                       <div className="flex-shrink-0">
                         <div className="flex overflow-hidden justify-center items-center w-8 h-8 bg-white rounded-full border border-gray-200">
