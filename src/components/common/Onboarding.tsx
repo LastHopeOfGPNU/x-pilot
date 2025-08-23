@@ -312,8 +312,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
           setError(null);
           window.removeEventListener('message', handleMessage);
           
-          // 重新检查连接状态以确保界面同步
-          checkTwitterConnection();
+          // 授权成功后，更新状态为已连接，不需要重新检查
+          setTwitterStatus({
+            has_records: true,
+            is_active: true,
+            is_expired: false,
+            is_twitter_connected: true
+          });
         } else if (event.data.type === 'TWITTER_AUTH_ERROR') {
           // 授权失败
           setError(event.data.error || 'Twitter authorization failed');
@@ -376,8 +381,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
           setError(null);
           window.removeEventListener('message', handleMessage);
           
-          // 重新检查连接状态以确保界面同步
-          checkTwitterConnection();
+          // 授权成功后，更新状态为已连接，不需要重新检查
+          setTwitterStatus({
+            has_records: true,
+            is_active: true,
+            is_expired: false,
+            is_twitter_connected: true
+          });
         } else if (event.data.type === 'TWITTER_AUTH_ERROR') {
           // 授权失败
           setError(event.data.error || 'Twitter reconnection failed');
