@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Twitter, CheckCircle, XCircle, Loader, ArrowRight } from 'lucide-react';
 import { twitterService } from '../../lib/twitterService';
+import { logger } from '../../utils/logger';
 
 export const TwitterDirectCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -71,7 +72,7 @@ export const TwitterDirectCallback: React.FC = () => {
                 window.close();
               }, 1500);
             } catch (error) {
-              console.error('Failed to communicate with parent window:', error);
+              logger.error('Failed to communicate with parent window:', error);
               // 如果无法通信，则正常跳转
               navigate('/?section=profile&tab=twitter-auth');
             }
@@ -94,7 +95,7 @@ export const TwitterDirectCallback: React.FC = () => {
           throw new Error(result.error || 'Connection failed, please try again');
         }
       } catch (error) {
-        console.error('Twitter callback processing failed:', error);
+        logger.error('Twitter callback processing failed:', error);
         setStatus('error');
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         
@@ -119,7 +120,7 @@ export const TwitterDirectCallback: React.FC = () => {
               error: errorMessage
             }, window.location.origin);
           } catch (e) {
-            console.error('Failed to communicate error to parent window:', e);
+            logger.error('Failed to communicate error to parent window:', e);
           }
         }
         } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('network')) {
@@ -154,9 +155,9 @@ export const TwitterDirectCallback: React.FC = () => {
                 <Loader className="mx-auto w-8 h-8 text-blue-500 animate-spin" />
                 <div className="space-y-2">
                   <p className="text-gray-600">{message}</p>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full h-2 bg-gray-200 rounded-full">
                     <div 
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-500 ease-out"
+                      className="h-2 bg-blue-500 rounded-full transition-all duration-500 ease-out"
                       style={{ width: `${progress}%` }}
                     ></div>
                   </div>
@@ -170,20 +171,39 @@ export const TwitterDirectCallback: React.FC = () => {
                 <CheckCircle className="mx-auto w-12 h-12 text-green-500" />
                 <div className="space-y-2">
                   <p className="text-lg font-semibold text-green-600">{message}</p>
-                  <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
+                  <div className="flex justify-center items-center space-x-2 text-sm text-gray-600">
                     <span>{countdown} 秒后自动跳转到个人资料页面</span>
                     <ArrowRight className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full h-2 bg-gray-200 rounded-full">
                   <div 
-                    className="bg-green-500 h-2 rounded-full transition-all duration-1000 ease-linear"
+                    className="h-2 bg-green-500 rounded-full transition-all duration-1000 ease-linear"
                     style={{ width: `${((3 - countdown) / 3) * 100}%` }}
                   ></div>
                 </div>
                 <button
-                  onClick={() => navigate('/?section=profile&tab=twitter-auth')}
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md border border-transparent hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                  onClick={() => {
+                    const isPopup = window.opener && window.opener !== window;
+                    if (isPopup) {
+                      // 在弹出窗口中，通知父窗口跳转并关闭窗口
+                      try {
+                        window.opener.postMessage({
+                          type: 'TWITTER_AUTH_NAVIGATE',
+                          url: '/?section=profile&tab=twitter-auth'
+                        }, window.location.origin);
+                        window.close();
+                      } catch (error) {
+                        logger.error('Failed to communicate with parent window:', error);
+                        // 如果无法通信，则正常跳转
+                        navigate('/?section=profile&tab=twitter-auth');
+                      }
+                    } else {
+                      // 不在弹出窗口中，正常跳转
+                      navigate('/?section=profile&tab=twitter-auth');
+                    }
+                  }}
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md border border-transparent transition-colors hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                 >
                   立即跳转
                   <ArrowRight className="ml-2 w-4 h-4" />
@@ -199,8 +219,27 @@ export const TwitterDirectCallback: React.FC = () => {
                   <p className="text-sm text-gray-600">{message}</p>
                 </div>
                 <button
-                  onClick={() => navigate('/?section=profile&tab=twitter-auth')}
-                  className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md border border-transparent hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  onClick={() => {
+                    const isPopup = window.opener && window.opener !== window;
+                    if (isPopup) {
+                      // 在弹出窗口中，通知父窗口跳转并关闭窗口
+                      try {
+                        window.opener.postMessage({
+                          type: 'TWITTER_AUTH_NAVIGATE',
+                          url: '/?section=profile&tab=twitter-auth'
+                        }, window.location.origin);
+                        window.close();
+                      } catch (error) {
+                        logger.error('Failed to communicate with parent window:', error);
+                        // 如果无法通信，则正常跳转
+                        navigate('/?section=profile&tab=twitter-auth');
+                      }
+                    } else {
+                      // 不在弹出窗口中，正常跳转
+                      navigate('/?section=profile&tab=twitter-auth');
+                    }
+                  }}
+                  className="inline-flex justify-center items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md border border-transparent transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   返回个人资料
                   <ArrowRight className="ml-2 w-4 h-4" />

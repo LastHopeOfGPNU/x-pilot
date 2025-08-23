@@ -18,6 +18,7 @@ import { Card, InspirationAccount, Post } from './types/index';
 import AIAssistant from './components/ai-assistant/AIAssistant';
 import EnvSwitcher from './components/config/EnvSwitcher';
 import Onboarding from './components/common/Onboarding';
+import GuideTour, { GuideStep } from './components/common/GuideTour';
 
 import { apiConfigService } from './lib/apiConfigService';
 import { onboardingService } from './lib/onboardingService';
@@ -42,6 +43,7 @@ export interface MarketingStrategy {
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataCacheProvider } from './contexts/DataCacheContext';
+import { OnboardingProvider, useOnboarding } from './contexts/OnboardingContext';
 
 // Create layout context for AI chat state
 const LayoutContext = createContext<{
@@ -53,13 +55,8 @@ export const useLayout = () => useContext(LayoutContext);
 
 const AppContent: React.FC = () => {
   const { user, loading, session } = useAuth();
+  const { onboardingStatus, loading: onboardingLoading, completeOnboarding } = useOnboarding();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [onboardingStatus, setOnboardingStatus] = useState<{
-    isFinished: boolean;
-    currentStep: string;
-    loading: boolean;
-    error?: string;
-  }>({ isFinished: false, currentStep: 'START', loading: true });
   // 初始化时从localStorage读取，避免useEffect执行两次
   const [activeMenuItem, setActiveMenuItem] = useState<string>(() => {
     const savedMenuItem = localStorage.getItem('activeMenuItem');
@@ -78,6 +75,60 @@ const AppContent: React.FC = () => {
   const [apiBaseUrl, setApiBaseUrl] = useState<string>(apiConfigService.getApiBaseUrl());
   const [showCopilotDevConsole, setShowCopilotDevConsole] = useState(devConfigService.getShowCopilotDevConsole());
   const [copilotKitRuntimeUrl, setCopilotKitRuntimeUrl] = useState<string>(devConfigService.getCopilotKitRuntimeUrl());
+  
+  // 引导状态管理
+  const [isGuideActive, setIsGuideActive] = useState(false);
+  const [currentGuideStep, setCurrentGuideStep] = useState(0);
+  const [isFromOnboarding, setIsFromOnboarding] = useState(false);
+  
+  // 定义引导步骤
+  const guideSteps: GuideStep[] = [
+    {
+      id: 'auto-reply-tab',
+      title: '自动回复功能',
+      content: '这里是自动回复模块，您可以查看和管理所有需要回复的推文。系统会智能识别需要回复的内容，帮助您提高互动效率。',
+      targetSelector: '[data-guide="auto-reply-tab"]',
+      position: 'bottom'
+    },
+    {
+      id: 'auto-repost-tab',
+      title: '自动转发功能',
+      content: '自动转发模块让您可以轻松管理转发内容。选择合适的推文进行转发，扩大您的影响力和内容传播范围。',
+      targetSelector: '[data-guide="auto-repost-tab"]',
+      position: 'bottom'
+    },
+    {
+      id: 'starred-tab',
+      title: '星标内容',
+      content: '这里显示您标记为重要的内容。通过星标功能，您可以快速找到需要特别关注的推文和账户。',
+      targetSelector: '[data-guide="starred-tab"]',
+      position: 'bottom'
+    },
+    {
+      id: 'ai-chat',
+      title: 'AI 智能助手',
+      content: '我是您的AI助手，可以帮助您制定营销策略、分析数据、生成内容等。随时点击这里与我对话，获得专业的建议和支持。',
+      targetSelector: '[data-guide="ai-chat"]',
+      position: 'left'
+    }
+  ];
+  
+  // 引导处理函数
+  const handleGuideComplete = useCallback(() => {
+    setIsGuideActive(false);
+    setIsFromOnboarding(false);
+    setCurrentGuideStep(0);
+  }, []);
+  
+  const handleGuideSkip = useCallback(() => {
+    setIsGuideActive(false);
+    setIsFromOnboarding(false);
+    setCurrentGuideStep(0);
+  }, []);
+  
+  const handleGuideStepChange = useCallback((stepIndex: number) => {
+    setCurrentGuideStep(stepIndex);
+  }, []);
 
   // 动态生成 CopilotKit headers，包含 Bearer token
   const copilotHeaders = useMemo(() => {
@@ -92,9 +143,13 @@ const AppContent: React.FC = () => {
 
   // 使用useCallback避免onComplete函数重复创建 - 必须在所有条件渲染之前
   const handleOnboardingComplete = useCallback(() => {
-    setOnboardingStatus({ isFinished: true, currentStep: 'ENGAGEMENT', loading: false, error: undefined });
-    // 导航到 Engagement Queue (Inspiration Accounts)
-    setActiveMenuItem('Inspiration Accounts');
+    completeOnboarding();
+    // 导航到 Auto Engagement 页面
+    setActiveMenuItem('Auto Engagement');
+    // 标记来自onboarding，启动引导
+    setIsFromOnboarding(true);
+    setIsGuideActive(true);
+    setCurrentGuideStep(0);
     // 清除其他选择状态
     setSelectedCard(null);
     setSelectedAccount(null);
@@ -102,7 +157,7 @@ const AppContent: React.FC = () => {
     setSelectedPostId(null);
     setSelectedPost(null);
     setSelectedStrategy(null);
-  }, []);
+  }, [completeOnboarding]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -172,48 +227,7 @@ const AppContent: React.FC = () => {
     };
   }, []);
 
-  // 检查onboarding状态
-  const checkOnboardingStatus = useCallback(async () => {
-      const isOnboardingMockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
-      
-      
-      // 如果启用了mock模式，强制显示onboarding
-      if (isOnboardingMockMode) {
-        console.log('App.tsx: Mock mode enabled, forcing onboarding display');
-        setOnboardingStatus({ isFinished: false, currentStep: 'START', loading: false, error: undefined });
-        return;
-      }
-      
-      // 如果没有用户且不是mock模式，直接跳过onboarding检查
-      if (!user && !isOnboardingMockMode) {
-        setOnboardingStatus({ isFinished: true, currentStep: 'ENGAGEMENT', loading: false, error: undefined });
-        return;
-      }
 
-      try {
-        const status = await onboardingService.getCurrentStep();
-        setOnboardingStatus({
-          isFinished: status.is_finished,
-          currentStep: status.current_step,
-          loading: false,
-          error: undefined
-        });
-      } catch (error) {
-        // 接口失败时直接显示主页面，不显示错误信息
-        setOnboardingStatus({
-          isFinished: true,
-          currentStep: 'ENGAGEMENT',
-          loading: false,
-          error: undefined
-        });
-       }
-     }, [user]);
-
-  // 移除重试功能，因为接口失败时直接显示主页面
-
-  useEffect(() => {
-    checkOnboardingStatus();
-  }, [checkOnboardingStatus]);
 
   // Calculate available space for intelligent layout
   const sidebarWidth = 256; // w-64 = 16rem = 256px
@@ -242,25 +256,23 @@ const AppContent: React.FC = () => {
   }
 
   // 如果onboarding状态还在加载中
-  if (onboardingStatus.loading) {
+  if (onboardingLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-blue-50">
         <div className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 rounded-full border-4 border-blue-200 animate-spin border-t-[#4792E6]"></div>
-          <p className="text-gray-600">Checking setup status...</p>
+          <p className="text-gray-600">Checking...</p>
         </div>
       </div>
     );
   }
 
-  // 移除错误处理UI，接口失败时直接显示主页面
-
   // 如果用户需要完成onboarding
-  if (!onboardingStatus.isFinished) {
+  if (onboardingStatus && !onboardingStatus.is_finished) {
     return (
       <Onboarding 
         onComplete={handleOnboardingComplete}
-        initialStep={onboardingStatus.currentStep}
+        initialStep={onboardingStatus.current_step}
       />
     );
   }
@@ -442,6 +454,18 @@ const AppContent: React.FC = () => {
         
         {/* 环境切换器 - 仅在开发环境显示 */}
         <EnvSwitcher />
+        
+        {/* 引导组件 - 只在从onboarding进入且在Auto Engagement页面时显示 */}
+        {isGuideActive && isFromOnboarding && activeMenuItem === 'Auto Engagement' && (
+          <GuideTour
+            steps={guideSteps}
+            isActive={isGuideActive}
+            currentStepIndex={currentGuideStep}
+            onComplete={handleGuideComplete}
+            onSkip={handleGuideSkip}
+            onStepChange={handleGuideStepChange}
+          />
+        )}
   
       </LayoutContext.Provider>
     </CopilotKit>
@@ -452,14 +476,16 @@ function App() {
   return (
     <DataCacheProvider>
       <AuthProvider>
-        <Router>
-          <Routes>
-            <Route path="/auth/supabase/twitter/callback" element={<TwitterAuthCallback />} />
-            <Route path="/auth/twitter/direct/callback" element={<TwitterDirectCallback />} />
-            {/* Removed PlanDemo route - demo page deleted */}
-            <Route path="/*" element={<AppContent />} />
-          </Routes>
-        </Router>
+        <OnboardingProvider>
+          <Router>
+            <Routes>
+              <Route path="/auth/supabase/twitter/callback" element={<TwitterAuthCallback />} />
+              <Route path="/auth/twitter/direct/callback" element={<TwitterDirectCallback />} />
+              {/* Removed PlanDemo route - demo page deleted */}
+              <Route path="/*" element={<AppContent />} />
+            </Routes>
+          </Router>
+        </OnboardingProvider>
       </AuthProvider>
     </DataCacheProvider>
   );

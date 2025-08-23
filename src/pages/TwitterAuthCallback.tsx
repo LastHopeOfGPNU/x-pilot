@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { logger } from '../utils/logger';
 
 export const TwitterAuthCallback: React.FC = () => {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ export const TwitterAuthCallback: React.FC = () => {
         const errorDescription = searchParams.get('error_description');
         
         if (errorParam) {
-          console.error('Twitter OAuth callback error:', errorParam, errorDescription);
+          logger.error('Twitter OAuth callback error:', errorParam, errorDescription);
           throw new Error(`Twitter returned error: ${errorDescription || errorParam}`);
         }
 
@@ -51,7 +52,7 @@ export const TwitterAuthCallback: React.FC = () => {
         }, 2000);
 
       } catch (error) {
-        console.error('Twitter authorization callback processing failed:', error);
+        logger.error('Twitter authorization callback processing failed:', error);
         setStatus('error');
         setMessage(error instanceof Error ? error.message : 'Authorization processing failed');
         

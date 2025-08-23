@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { logger } from '../../utils/logger';
 
 interface MermaidProps {
   chart: string;
@@ -75,7 +76,7 @@ export const Mermaid: React.FC<MermaidProps> = ({ chart, className = '' }) => {
           svgElement.style.height = 'auto';
         }
       } catch (error) {
-        console.error('Mermaid rendering error:', error);
+        logger.error('Mermaid rendering error:', error);
         if (elementRef.current) {
           elementRef.current.innerHTML = `
             <div class="p-4 bg-red-50 border border-red-200 rounded-lg text-center">

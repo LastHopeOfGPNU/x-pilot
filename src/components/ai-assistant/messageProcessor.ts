@@ -34,7 +34,6 @@ export const hasActionMessages = (messages: Message[]): boolean => {
 export const filterMessages = (messages: Message[]): Message[] => {
   const hasActions = hasActionMessages(messages);
   const showAllMessages = devConfigService.getShowAllMessages();
-  console.log('Processing messages:', messages);
   
   if (hasActions && !showAllMessages) {
     return messages.map(msg => {

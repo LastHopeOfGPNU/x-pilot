@@ -492,16 +492,28 @@ const ResultsArea: React.FC<ResultsAreaProps> = ({ selectedCard, selectedAccount
                 {account.verified && <VerifiedBadge />}
                 {account.starred && <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />}
               </div>
-              <p className="text-blue-100 mb-2">@{account.handle}</p>
+              <p className="text-blue-100 mb-2">{account.handle.startsWith('@') ? account.handle : `@${account.handle}`}</p>
               <p className="text-sm text-blue-100 mb-4">{account.bio}</p>
               <div className="flex items-center space-x-6 text-sm">
                 <div className="flex items-center space-x-1">
                   <Users className="w-4 h-4" />
-                  <span>{formatNumber(account.followers)} followers</span>
+                  <span>{formatNumber(account.followers)}</span>
                 </div>
+                {account.following && (
+                  <div className="flex items-center space-x-1">
+                    <Users className="w-4 h-4" />
+                    <span>{formatNumber(account.following)}</span>
+                  </div>
+                )}
+                {account.tweets && (
+                  <div className="flex items-center space-x-1">
+                    <MessageSquare className="w-4 h-4" />
+                    <span>{formatNumber(account.tweets)}</span>
+                  </div>
+                )}
                 <div className="flex items-center space-x-1">
                   <Heart className="w-4 h-4" />
-                  <span>{formatNumber(account.likes)} likes</span>
+                  <span>{formatNumber(account.likes)}</span>
                 </div>
               </div>
             </div>
@@ -517,7 +529,7 @@ const ResultsArea: React.FC<ResultsAreaProps> = ({ selectedCard, selectedAccount
                 Account Analytics
               </h2>
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="text-2xl font-bold text-blue-600">{accountAnalytics.influence}</div>
                   <div className="text-sm text-gray-600">Influence Score</div>
@@ -561,7 +573,7 @@ const ResultsArea: React.FC<ResultsAreaProps> = ({ selectedCard, selectedAccount
                         <div className="flex items-center space-x-2 mb-3">
                           <span className="font-semibold text-gray-900">{account.name}</span>
                           {account.verified && <VerifiedBadge />}
-                          <span className="text-gray-500">@{account.handle}</span>
+                          <span className="text-gray-500">{account.handle.startsWith('@') ? account.handle : `@${account.handle}`}</span>
                           <span className="text-gray-500">·</span>
                           <span className="text-gray-500 text-sm">{post.time}</span>
                         </div>
@@ -606,43 +618,37 @@ const ResultsArea: React.FC<ResultsAreaProps> = ({ selectedCard, selectedAccount
       <div className="h-full overflow-y-auto">
         {/* Card Header */}
         <div className="bg-gradient-to-r from-blue-500 to-[#4792E6] p-6 text-white">
-          <div className="flex items-start space-x-4">
-            <div className="flex justify-center items-center w-16 h-16 bg-white/20 rounded-full">
-              {card.avatar ? (
-                <img src={card.avatar} alt={card.author} className="w-full h-full rounded-full object-cover" />
-              ) : (
-                <User size={24} className="text-white" />
-              )}
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center space-x-3 mb-2">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start space-x-4">
+              <div className="flex justify-center items-center w-16 h-16 bg-white/20 rounded-full">
+                {card.avatar ? (
+                  <img src={card.avatar} alt={card.author} className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  <User size={24} className="text-white" />
+                )}
+              </div>
+              <div className="flex-1">
                 <h1 className="text-2xl font-bold">
-                  {card.title || 'Card Details'}
+                  {card.author || 'Card Details'}
                 </h1>
-                {card.type && (
-                  <span className="px-3 py-1 rounded-full text-sm font-medium bg-white/20 border border-white/30">
-                    {card.type}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center space-x-4 text-sm text-blue-100">
-                {card.author && (
-                  <div className="flex items-center space-x-2">
-                    <User size={14} />
-                    <span>{card.author}</span>
-                  </div>
-                )}
                 {card.handle && (
-                  <div className="flex items-center space-x-1">
-                    <span>@{card.handle}</span>
+                  <div className="text-sm text-blue-100 mt-1">
+                    {card.handle}
                   </div>
                 )}
-                <div className="flex items-center space-x-1">
-                  <Clock size={14} />
-                  <span>{card.time}</span>
-                </div>
               </div>
             </div>
+            {card.username && card.tweetId && (
+              <button
+                onClick={() => {
+                  window.open(`https://x.com/${card.username}/status/${card.tweetId}`, '_blank');
+                }}
+                className="p-2 text-white/80 transition-colors hover:text-white hover:bg-white/20 rounded-full"
+                title="在X上查看原推"
+              >
+                <ExternalLink size={20} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -676,60 +682,50 @@ const ResultsArea: React.FC<ResultsAreaProps> = ({ selectedCard, selectedAccount
           )}
 
           {/* Stats */}
-          {(card.stats || card.likes || card.retweets || card.replies || card.views) && (
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <BarChart3 className="w-5 h-5 mr-2 text-blue-500" />
-                Engagement Stats
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {(card.stats?.likes || card.likes) && (
-                  <div className="bg-red-50 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-red-600">
-                      {formatNumber(card.stats?.likes || card.likes || 0)}
-                    </div>
-                    <div className="text-sm text-gray-600 flex items-center">
-                      <Heart size={14} className="mr-1" />
-                      Likes
-                    </div>
-                  </div>
-                )}
-                {(card.stats?.retweets || card.retweets) && (
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">
-                      {formatNumber(card.stats?.retweets || card.retweets || 0)}
-                    </div>
-                    <div className="text-sm text-gray-600 flex items-center">
-                      <Repeat2 size={14} className="mr-1" />
-                      Retweets
-                    </div>
-                  </div>
-                )}
-                {(card.stats?.comments || card.replies) && (
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {formatNumber(card.stats?.comments || card.replies || 0)}
-                    </div>
-                    <div className="text-sm text-gray-600 flex items-center">
-                      <MessageCircle size={14} className="mr-1" />
-                      Replies
-                    </div>
-                  </div>
-                )}
-                {(card.stats?.views || card.views) && (
-                  <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-[#4792E6]">
-                      {formatNumber(card.stats?.views || card.views || 0)}
-                    </div>
-                    <div className="text-sm text-gray-600 flex items-center">
-                      <Eye size={14} className="mr-1" />
-                      Views
-                    </div>
-                  </div>
-                )}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <BarChart3 className="w-5 h-5 mr-2 text-blue-500" />
+              Engagement Stats
+            </h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-red-50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-red-600">
+                  {formatNumber(card.stats?.likes || card.likes || 0)}
+                </div>
+                <div className="text-sm text-gray-600 flex items-center">
+                  <Heart size={14} className="mr-1" />
+                  Likes
+                </div>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">
+                  {formatNumber(card.stats?.retweets || card.retweets || 0)}
+                </div>
+                <div className="text-sm text-gray-600 flex items-center">
+                  <Repeat2 size={14} className="mr-1" />
+                  Retweets
+                </div>
+              </div>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">
+                  {formatNumber(card.stats?.comments || card.replies || 0)}
+                </div>
+                <div className="text-sm text-gray-600 flex items-center">
+                  <MessageCircle size={14} className="mr-1" />
+                  Replies
+                </div>
+              </div>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-[#4792E6]">
+                  {formatNumber(card.stats?.views || card.views || 0)}
+                </div>
+                <div className="text-sm text-gray-600 flex items-center">
+                  <Eye size={14} className="mr-1" />
+                  Views
+                </div>
               </div>
             </div>
-          )}
+          </div>
 
           {/* Metadata */}
           {card.metadata && (

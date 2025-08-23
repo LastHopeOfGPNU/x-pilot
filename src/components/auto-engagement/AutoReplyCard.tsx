@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Heart, Repeat2, MessageSquare, X, Send, Edit3, Check, Eye } from 'lucide-react';
+import { Heart, Repeat2, MessageSquare, X, Send, Eye, ExternalLink } from 'lucide-react';
 import { Card } from '../../types';
 import ConfirmModal from '../common/ConfirmModal';
+import { logger } from '../../utils/logger';
 
 interface AutoReplyCardProps {
   card: Card;
@@ -18,27 +19,12 @@ const AutoReplyCard: React.FC<AutoReplyCardProps> = ({
   onReject,
   onPost
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
   const [editedReply, setEditedReply] = useState(card.suggestedReply || '');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
 
-  const handleEditToggle = () => {
-    if (isEditing) {
-      setIsEditing(false);
-      // Save logic here if needed
-    } else {
-      setIsEditing(true);
-    }
-  };
-
   const handleReject = () => {
     onReject?.(card.id);
-  };
-
-  const handleSave = () => {
-    setIsEditing(false);
-    // Save logic here
   };
 
   const handlePostReply = () => {
@@ -52,7 +38,7 @@ const AutoReplyCard: React.FC<AutoReplyCardProps> = ({
       setShowConfirmModal(false);
       setIsPosting(false);
     } catch (error) {
-      console.error('Failed to post reply:', error);
+      logger.error('Failed to post reply:', error);
       setIsPosting(false);
     }
   };
@@ -63,7 +49,7 @@ const AutoReplyCard: React.FC<AutoReplyCardProps> = ({
       onPost?.(card.id, editedReply);
       setIsPosting(false);
     } catch (error) {
-      console.error('Failed to post reply:', error);
+      logger.error('Failed to post reply:', error);
       setIsPosting(false);
     }
   };
@@ -103,8 +89,20 @@ const AutoReplyCard: React.FC<AutoReplyCardProps> = ({
             />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="mb-1">
+            <div className="flex items-center justify-between mb-1">
               <span className="font-semibold text-gray-900">{card.author || 'Unknown User'}</span>
+              {card.username && card.tweetId && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(`https://x.com/${card.username}/status/${card.tweetId}`, '_blank');
+                  }}
+                  className="p-1 text-gray-400 transition-colors hover:text-blue-500 hover:bg-blue-50 rounded-full"
+                  title="在X上查看原推"
+                >
+                  <ExternalLink size={16} />
+                </button>
+              )}
             </div>
             <div className="flex items-center mb-2 space-x-2">
               <span className="text-sm text-gray-500">{card.handle || '@unknown'}</span>
@@ -147,37 +145,17 @@ const AutoReplyCard: React.FC<AutoReplyCardProps> = ({
               SUGGESTED REPLY
             </span>
           </div>
-          <button
-            onClick={handleEditToggle}
-            className="flex items-center px-2 py-1 space-x-1 text-xs text-blue-600 rounded-md transition-colors hover:bg-blue-50"
-          >
-            {isEditing ? <Check size={14} /> : <Edit3 size={14} />}
-            <span className="hidden sm:inline">{isEditing ? 'Save' : 'Edit'}</span>
-          </button>
         </div>
         
-        <div className={`rounded-lg p-3 mb-4 transition-all duration-200 ${
-          isEditing 
-            ? 'bg-white border-2 border-[#4792E6] shadow-sm ring-2 ring-[#4792E6]/20' 
-            : 'bg-gray-50'
-        }`}>
-          {isEditing ? (
-            <textarea
-              value={editedReply}
-              onChange={(e) => setEditedReply(e.target.value)}
-              className="w-full text-sm text-gray-900 bg-transparent border-none resize-none focus:outline-none leading-relaxed min-h-[80px] max-h-[200px]"
-              rows={3}
-              placeholder="Enter your reply..."
-              onClick={(e) => e.stopPropagation()}
-              autoFocus
-            />
-          ) : (
-            <div className="min-h-[80px] flex items-start">
-              <p className="text-sm leading-relaxed text-gray-900 whitespace-pre-line">
-                {editedReply || card.suggestedReply || 'No suggested reply available'}
-              </p>
-            </div>
-          )}
+        <div className="rounded-lg p-3 mb-4 transition-all duration-200 bg-white border-2 border-[#4792E6] shadow-sm ring-2 ring-[#4792E6]/20">
+          <textarea
+            value={editedReply}
+            onChange={(e) => setEditedReply(e.target.value)}
+            className="w-full text-sm text-gray-900 bg-transparent border-none resize-none focus:outline-none leading-relaxed min-h-[80px] max-h-[200px]"
+            rows={3}
+            placeholder="Enter your reply..."
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
 
         {/* Action Buttons */}

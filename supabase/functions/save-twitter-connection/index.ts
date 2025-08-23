@@ -109,14 +109,37 @@ serve(async (req) => {
       updated_at: new Date().toISOString()
     }
 
-    const { data, error } = await supabase
+    // 首先检查是否已有记录，如果有则更新，没有则插入
+    const { data: existingConnection } = await supabase
       .from('user_social_connections')
-      .upsert(connectionData, {
-        onConflict: 'user_id,platform',
-        ignoreDuplicates: false
-      })
-      .select()
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('platform', 'twitter')
       .single()
+
+    let data, error
+    
+    if (existingConnection) {
+      // 更新现有记录
+      const result = await supabase
+        .from('user_social_connections')
+        .update(connectionData)
+        .eq('user_id', user.id)
+        .eq('platform', 'twitter')
+        .select()
+        .single()
+      data = result.data
+      error = result.error
+    } else {
+      // 插入新记录
+      const result = await supabase
+        .from('user_social_connections')
+        .insert(connectionData)
+        .select()
+        .single()
+      data = result.data
+      error = result.error
+    }
 
     if (error) {
       console.error('Failed to save connection:', error)

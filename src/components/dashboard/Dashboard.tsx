@@ -24,8 +24,10 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useDataCache } from '../../contexts/DataCacheContext';
 import { dashboardService, DashboardData, Account } from '../../lib/dashboardService';
-import { onboardingService, OnboardingStatusResponse } from '../../lib/onboardingService';
+import { onboardingService } from '../../lib/onboardingService';
+import { useOnboarding } from '../../contexts/OnboardingContext';
 import { TwitterModal } from '../auth/TwitterModal';
+import { logger } from '../../utils/logger';
 
 // Loading Card Component
 const LoadingCard: React.FC = () => (
@@ -165,10 +167,11 @@ const OnboardingProgress: React.FC<{
 };
 
 interface DashboardProps {
-  onNavigate?: (section: string, profileSection?: string) => void;
+  onNavigate: (section: string, profileSection?: string) => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
+  const { onboardingStatus, loading: onboardingLoading } = useOnboarding();
   const { user } = useAuth();
   const {
     getDashboardData,
@@ -204,9 +207,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   });
   const [refreshButtonFlash, setRefreshButtonFlash] = useState(false);
   
-  // Onboarding状态
-  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatusResponse | null>(null);
-  const [onboardingLoading, setOnboardingLoading] = useState(true);
+  // 使用从OnboardingContext获取的状态
+  // onboardingStatus和onboardingLoading已经从useOnboarding()获取
   
   // 缓存数据的引用
   const cachedDataRef = useRef<DashboardData | null>(null);
@@ -232,7 +234,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       cachedDataRef.current = data;
       setDashboardData(data);
     } catch (err) {
-      console.error('Failed to fetch dashboard data:', err);
+      logger.error('Failed to fetch dashboard data:', err);
       setError('Failed to load dashboard data. Please try again.');
       
       // 触发refresh按钮闪烁效果
@@ -246,20 +248,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     }
   };
 
-  // 获取onboarding状态
-  const fetchOnboardingStatus = async () => {
-    try {
-      setOnboardingLoading(true);
-      const status = await onboardingService.getCurrentStep();
-      setOnboardingStatus(status);
-    } catch (error) {
-      console.error('Failed to fetch onboarding status:', error);
-      // 如果获取失败，假设已完成
-      setOnboardingStatus({ is_finished: true, current_step: 'ENGAGEMENT' });
-    } finally {
-      setOnboardingLoading(false);
-    }
-  };
+
 
   // Get user display name
   const getUserDisplayName = () => {
@@ -272,11 +261,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     return 'User';
   };
 
-  // 组件加载时获取Dashboard数据和onboarding状态
+  // 组件加载时获取Dashboard数据
   useEffect(() => {
-    // 获取onboarding状态
-    fetchOnboardingStatus();
-    
     // 首次加载时，如果有缓存数据则优先显示
     if (dashboardData) {
       // 已有缓存数据，后台更新

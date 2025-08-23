@@ -7,6 +7,7 @@ import InspirationAccountCard from '../inspiration-accounts/InspirationAccountCa
 import Toast from '../common/Toast';
 import { inspirationAccountService } from '../../lib/inspirationAccountService';
 import { engagementService } from '../../lib/engagementService';
+import { logger } from '../../utils/logger';
 
 interface EngagementQueueProps {
   showInspirationAccounts?: boolean;
@@ -165,7 +166,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
         queue.target.clear();
       }
     } catch (error) {
-      console.error('Batch operation failed:', error);
+      logger.error('Batch operation failed:', error);
       showToast('Batch operation failed, restoring state', 'error');
       
       // If batch operation fails, notify all callbacks
@@ -267,7 +268,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
         setInspirationAccounts(transformedAccounts);
       }
     } catch (error) {
-      console.error('Failed to fetch inspiration accounts:', error);
+      logger.error('Failed to fetch inspiration accounts:', error);
       showToast('Failed to load accounts', 'error');
     } finally {
       setAccountsLoading(false);
@@ -319,7 +320,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
       
       setAutoReplyData(transformedCards);
     } catch (error) {
-      console.error('Failed to fetch engagement data:', error);
+      logger.error('Failed to fetch engagement data:', error);
       showToast('Failed to load engagement queue', 'error');
       // If API call fails, set to empty array instead of using mock data
       setAutoReplyData([]);
@@ -358,7 +359,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
       setAutoReplyData(prev => prev.filter(card => card.id !== cardId));
       showToast('Reply rejected successfully', 'info');
     } catch (error) {
-      console.error('Failed to reject reply:', error);
+      logger.error('Failed to reject reply:', error);
       showToast('Failed to reject reply', 'error');
     }
   };
@@ -375,7 +376,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
       setAutoReplyData(prev => prev.filter(card => card.id !== cardId));
       showToast('Reply posted successfully', 'success');
     } catch (error) {
-      console.error('Failed to post reply:', error);
+      logger.error('Failed to post reply:', error);
       showToast('Failed to post reply', 'error');
     }
   };
@@ -501,7 +502,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
   if (showInspirationAccounts) {
     // Inspiration Accounts display logic
     return (
-      <div className="flex flex-col h-full bg-white rounded-lg border border-gray-200 shadow-sm min-w-[320px]">
+      <div className="flex flex-col h-full bg-white rounded-lg border border-gray-200 shadow-sm w-full max-w-lg">
         {/* Header */}
         <div className="flex-shrink-0 p-4 sm:p-6 border-b border-gray-200">
           <h2 className="mb-4 text-xl font-semibold text-gray-900">{title}</h2>
@@ -510,6 +511,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
           <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 mb-4">
             <button
               onClick={() => setActiveTab('starred')}
+              data-guide="starred-tab"
               className={`flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === 'starred'
                   ? 'bg-white text-blue-600 shadow-sm'
@@ -608,6 +610,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
         <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 mb-4">
           <button
             onClick={() => setActiveTab('autoReply')}
+            data-guide="auto-reply-tab"
             className={`flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               activeTab === 'autoReply'
                 ? 'bg-white text-blue-600 shadow-sm'
@@ -619,6 +622,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('autoRepost')}
+            data-guide="auto-repost-tab"
             className={`flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               activeTab === 'autoRepost'
                 ? 'bg-white text-blue-600 shadow-sm'

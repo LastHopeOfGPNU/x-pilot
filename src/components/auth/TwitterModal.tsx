@@ -7,6 +7,8 @@ interface Account {
   display_name: string;
   profile_image_url: string | null;
   followers_count: number;
+  following_count: number;
+  tweet_count: number;
   verified: boolean;
   is_starred: boolean;
   is_target: boolean;
@@ -108,16 +110,25 @@ export const TwitterModal: React.FC<TwitterModalProps> = ({
                 {accountData?.profile_image_url ? (
                   <img
                     src={accountData.profile_image_url}
-                    alt={accountData.display_name}
+                    alt={accountData.display_name || displayName || username}
                     className="w-16 h-16 rounded-full border-3 border-white shadow-lg object-cover"
+                    onError={(e) => {
+                      // 如果图片加载失败，显示默认头像
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const fallback = target.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.style.display = 'flex';
+                    }}
                   />
-                ) : (
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full border-3 border-white shadow-lg flex items-center justify-center">
-                    <span className="text-xl font-bold text-white">
-                      {(accountData?.display_name || displayName || username).charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                )}
+                ) : null}
+                <div 
+                  className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full border-3 border-white shadow-lg flex items-center justify-center"
+                  style={{ display: accountData?.profile_image_url ? 'none' : 'flex' }}
+                >
+                  <span className="text-xl font-bold text-white">
+                    {(accountData?.display_name || displayName || username).charAt(0).toUpperCase()}
+                  </span>
+                </div>
                 {accountData?.verified && (
                   <CheckCircle className="absolute -bottom-1 -right-1 w-5 h-5 text-blue-500 bg-white rounded-full" />
                 )}
@@ -139,12 +150,14 @@ export const TwitterModal: React.FC<TwitterModalProps> = ({
                   </div>
                 </div>
                 <p className="text-gray-600 dark:text-gray-300 mb-3">
-                  @{accountData?.username || username}
+                  {(accountData?.username || username).startsWith('@') 
+                    ? (accountData?.username || username) 
+                    : `@${accountData?.username || username}`}
                 </p>
                 
-                {/* 关注者数量 */}
-                {accountData?.followers_count !== undefined && (
-                  <div className="flex items-center space-x-4 text-sm">
+                {/* 账户统计信息 */}
+                <div className="flex items-center flex-wrap gap-2 text-sm">
+                  {accountData?.followers_count !== undefined && (
                     <div className="bg-white dark:bg-gray-700 px-3 py-1 rounded-full border border-gray-200 dark:border-gray-600">
                       <span className="font-semibold text-gray-900 dark:text-white">
                         {accountData.followers_count.toLocaleString()}
@@ -153,8 +166,28 @@ export const TwitterModal: React.FC<TwitterModalProps> = ({
                         followers
                       </span>
                     </div>
-                  </div>
-                )}
+                  )}
+                  {accountData?.following_count !== undefined && (
+                    <div className="bg-white dark:bg-gray-700 px-3 py-1 rounded-full border border-gray-200 dark:border-gray-600">
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        {accountData.following_count.toLocaleString()}
+                      </span>
+                      <span className="text-gray-500 dark:text-gray-400 ml-1">
+                        following
+                      </span>
+                    </div>
+                  )}
+                  {accountData?.tweet_count !== undefined && (
+                    <div className="bg-white dark:bg-gray-700 px-3 py-1 rounded-full border border-gray-200 dark:border-gray-600">
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        {accountData.tweet_count.toLocaleString()}
+                      </span>
+                      <span className="text-gray-500 dark:text-gray-400 ml-1">
+                        tweets
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

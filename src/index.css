@@ -37,6 +37,16 @@
   scrollbar-color: #4792E6 #f1f5f9;
 }
 
+/* Utility class to explicitly hide scrollbars */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Show scrollbars for specific containers */
 .show-scrollbar::-webkit-scrollbar {
   width: 8px;

@@ -39,6 +39,8 @@ export interface Account {
   display_name: string;
   profile_image_url: string | null;
   followers_count: number;
+  following_count: number;
+  tweet_count: number;
   verified: boolean;
   is_starred: boolean;
   is_target: boolean;

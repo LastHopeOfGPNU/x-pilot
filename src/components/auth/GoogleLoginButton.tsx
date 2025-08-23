@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Chrome, Loader2 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { logger } from '../../utils/logger'
 
 interface GoogleLoginButtonProps {
   onSuccess?: () => void
@@ -27,7 +28,7 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({
       const { error } = await signInWithGoogle()
       
       if (error) {
-        console.error('Google登录错误:', error)
+        logger.error('Google登录错误:', error)
         let errorMessage = 'Google登录失败，请重试'
         
         if (error.message.includes('popup_closed_by_user')) {
@@ -43,7 +44,7 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({
         onSuccess?.()
       }
     } catch (err) {
-      console.error('Google登录异常:', err)
+      logger.error('Google登录异常:', err)
       onError?.('Google登录服务暂时不可用，请稍后重试')
     } finally {
       setLoading(false)
