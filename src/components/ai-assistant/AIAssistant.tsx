@@ -519,6 +519,28 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
 
                     {/* Input Area */}
                     <div className="relative">
+                      {/* Input Suggestions */}
+                      <div className="mb-3">
+                        <div className="flex flex-nowrap gap-2 mb-3 overflow-x-auto scrollbar-hide">
+                          <button
+                            onClick={() => {
+                              // 先自动选择@reply工具
+                              const replyCapability = CAPABILITY_OPTIONS.find(option => option.id === 'reply');
+                              if (replyCapability) {
+                                handleCapabilitySelect(replyCapability);
+                              }
+                              // 然后设置输入框内容
+                              setInputValue('help me reply');
+                              textareaRef.current?.focus();
+                            }}
+                            className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-full hover:bg-gray-100 hover:text-[#4792E6] hover:border-[#4792E6] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#4792E6] focus:ring-opacity-20 whitespace-nowrap flex-shrink-0"
+                          >
+                            <span className="mr-1.5">🤝</span>
+                            help me reply
+                          </button>
+                        </div>
+                      </div>
+
                       <textarea
                         ref={textareaRef}
                         className="w-full resize-none border-0 bg-gray-50 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4792E6] focus:bg-white text-sm transition-all duration-200 min-h-[80px] max-h-[240px]"
@@ -737,6 +759,28 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                 {renderSelectedCapability()}
 
                 <div className="relative">
+                  {/* Input Suggestions */}
+                  <div className="mb-3">
+                    <div className="flex flex-nowrap gap-2 mb-3 overflow-x-auto scrollbar-hide">
+                      <button
+                        onClick={() => {
+                            // 先自动选择@reply工具
+                            const replyCapability = CAPABILITY_OPTIONS.find(option => option.id === 'reply');
+                            if (replyCapability) {
+                              handleCapabilitySelect(replyCapability);
+                            }
+                            // 然后设置输入框内容
+                            setInputValue('help me reply');
+                            textareaRef.current?.focus();
+                          }}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-full hover:bg-gray-100 hover:text-[#4792E6] hover:border-[#4792E6] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#4792E6] focus:ring-opacity-20 whitespace-nowrap flex-shrink-0"
+                      >
+                        <span className="mr-1.5">🤝</span>
+                        help me reply
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Text Input Area - Top */}
                   <div className="mb-3">
                     <div className="relative">
