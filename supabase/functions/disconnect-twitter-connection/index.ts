@@ -65,16 +65,31 @@ Deno.serve(async (req) => {
     
     console.log('Debug - Disconnecting Twitter for user:', user.id);
     
-    // 查询当前用户的Twitter连接
-    const { data: connections, error: queryError } = await supabase
+    // 查询当前用户的Twitter连接记录（每个用户只有一条记录）
+    const { data: connection, error: queryError } = await supabase
       .from('user_social_connections')
       .select('*')
       .eq('user_id', user.id)
       .eq('platform', 'twitter')
-      .eq('is_active', true);
+      .single();
     
     if (queryError) {
       console.log('Debug - Query error:', queryError);
+      
+      // 如果没有找到记录，说明用户没有Twitter连接
+      if (queryError.code === 'PGRST106') {
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'No Twitter connection found',
+          was_active: false
+        }), {
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+      }
+      
       return new Response(JSON.stringify({
         success: false,
         error: `Database query error: ${queryError.message}`
@@ -87,14 +102,14 @@ Deno.serve(async (req) => {
       });
     }
     
-    console.log('Debug - Found connections:', connections?.length || 0);
+    console.log('Debug - Found connection:', { connection });
     
-    // 如果没有找到活跃的连接，返回成功（已经断开）
-    if (!connections || connections.length === 0) {
+    // 检查连接是否已经是非活跃状态
+    if (connection.is_active === false) {
       return new Response(JSON.stringify({
         success: true,
-        message: 'No active Twitter connection found',
-        disconnected_count: 0
+        message: 'Twitter connection already disconnected',
+        was_active: false
       }), {
         headers: {
           'Content-Type': 'application/json',
@@ -103,7 +118,7 @@ Deno.serve(async (req) => {
       });
     }
     
-    // 将所有活跃的Twitter连接设置为非活跃状态
+    // 将Twitter连接设置为非活跃状态（保留记录，只更新is_active字段）
     const { data: updateResult, error: updateError } = await supabase
       .from('user_social_connections')
       .update({ 
@@ -112,8 +127,8 @@ Deno.serve(async (req) => {
       })
       .eq('user_id', user.id)
       .eq('platform', 'twitter')
-      .eq('is_active', true)
-      .select();
+      .select()
+      .single();
     
     if (updateError) {
       console.log('Debug - Update error:', updateError);
@@ -129,19 +144,13 @@ Deno.serve(async (req) => {
       });
     }
     
-    console.log('Debug - Successfully disconnected connections:', updateResult?.length || 0);
+    console.log('Debug - Update result:', updateResult);
     
-    // 返回成功响应
     return new Response(JSON.stringify({
       success: true,
-      message: 'Twitter connection successfully disconnected',
-      disconnected_count: updateResult?.length || 0,
-      debug_info: {
-        user_id: user.id,
-        connections_found: connections.length,
-        connections_disconnected: updateResult?.length || 0,
-        timestamp: new Date().toISOString()
-      }
+      message: 'Twitter connection disconnected successfully',
+      was_active: true,
+      updated_connection: updateResult
     }), {
       headers: {
         'Content-Type': 'application/json',

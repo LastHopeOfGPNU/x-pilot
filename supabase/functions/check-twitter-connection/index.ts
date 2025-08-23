@@ -59,8 +59,13 @@ Deno.serve(async (req) => {
         }
       });
     }
-    // 查询 user_social_connections 表
-    const { data, error } = await supabase.from('user_social_connections').select('*').eq('user_id', user.id).eq('platform', 'twitter');
+    // 查询用户的Twitter连接记录（每个用户只有一条记录）
+    const { data, error } = await supabase
+      .from('user_social_connections')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('platform', 'twitter')
+      .single(); // 使用single()因为每个用户只有一条记录
     
     // 添加调试日志
     console.log('Debug - User ID:', user.id);
@@ -68,12 +73,30 @@ Deno.serve(async (req) => {
     
     if (error) {
       console.log('Debug - Query error:', error);
-      // 如果是 PGRST116 错误（表不存在），返回未连接状态而不是错误
+      // 如果是 PGRST116 错误（表不存在）或 PGRST106 错误（没有记录），返回未授权状态
       if (error.code === 'PGRST116') {
         return new Response(JSON.stringify({
           is_twitter_connected: false,
+          is_authorized: false,
+          is_expired: false,
           connection_details: null,
           debug_info: 'Table does not exist'
+        }), {
+          headers: {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          }
+        });
+      }
+      
+      // PGRST106 表示没有找到记录，说明用户未授权
+      if (error.code === 'PGRST106') {
+        return new Response(JSON.stringify({
+          is_twitter_connected: false,
+          is_authorized: false,
+          is_expired: false,
+          connection_details: null,
+          debug_info: 'No connection record found - user not authorized'
         }), {
           headers: {
             'Content-Type': 'application/json',
@@ -86,6 +109,8 @@ Deno.serve(async (req) => {
         error: error.message,
         error_code: error.code,
         is_twitter_connected: false,
+        is_authorized: false,
+        is_expired: false,
         debug_info: 'Database query error'
       }), {
         status: 500,
@@ -96,59 +121,59 @@ Deno.serve(async (req) => {
       });
     }
     
-    // 处理查询结果 - data 现在是数组
-    let hasActiveConnection = data && data.length > 0;
-    let latestConnection = hasActiveConnection ? data[0] : null;
-    let isAuthorized = false;
+    // 处理查询结果 - data 现在是单个对象
+    const connection = data;
+    let isAuthorized = true; // 有记录说明已授权
     let isExpired = false;
+    let isConnected = false;
     
-    console.log('Debug - Initial connection check:', { hasActiveConnection, connectionCount: data?.length });
+    console.log('Debug - Connection found:', { connection });
     
-    // 检查授权状态和过期状态
-    if (hasActiveConnection && latestConnection) {
-      isAuthorized = true; // 有连接记录说明已授权
+    // 根据新的逻辑判断连接状态
+    if (connection.is_active === false) {
+      // 情况3: is_active为false，可能是用户手动断链或其他异常
+      isConnected = false;
+      isExpired = true; // 返回已过期，需要用户手动建链
+      console.log('Debug - Connection is inactive, user needs to manually reconnect');
+    } else if (connection.expires_at) {
+      // 情况4: 检查token是否过期
+      const expirationTime = new Date(connection.expires_at);
+      const currentTime = new Date();
       
-      const expiresAt = latestConnection.expires_at;
-      console.log('Debug - Expires at:', expiresAt);
+      console.log('Debug - Time comparison:', {
+        currentTime: currentTime.toISOString(),
+        expirationTime: expirationTime.toISOString(),
+        isExpired: currentTime >= expirationTime
+      });
       
-      if (expiresAt) {
-        const expirationTime = new Date(expiresAt);
-        const currentTime = new Date();
-        
-        console.log('Debug - Time comparison:', {
-          currentTime: currentTime.toISOString(),
-          expirationTime: expirationTime.toISOString(),
-          isExpired: currentTime >= expirationTime
-        });
-        
-        // 如果token已过期，标记为过期但保持授权状态
-        if (currentTime >= expirationTime) {
-          isExpired = true;
-          hasActiveConnection = false; // 保持原有逻辑，过期时标记为未连接
-          console.log('Debug - Token expired, marking as disconnected but authorized');
-        }
+      if (currentTime >= expirationTime) {
+        // Token已过期，显示已过期，由系统自动刷新
+        isExpired = true;
+        isConnected = false;
+        console.log('Debug - Token expired, system should auto-refresh');
       } else {
-        console.log('Debug - No expiration time set, assuming token is valid');
+        // Token有效且活跃
+        isConnected = true;
+        console.log('Debug - Connection is active and valid');
       }
     } else {
-      // 没有连接记录说明未授权
-      isAuthorized = false;
-      isExpired = false;
+      // 没有过期时间，假设token有效
+      isConnected = true;
+      console.log('Debug - No expiration time set, assuming token is valid');
     }
     
     const result = {
-      is_twitter_connected: hasActiveConnection,
+      is_twitter_connected: isConnected,
       is_authorized: isAuthorized,
       is_expired: isExpired,
-      connection_details: latestConnection,
-      total_connections: data ? data.length : 0,
+      connection_details: connection,
       debug_info: {
         user_id: user.id,
-        query_returned_records: data?.length || 0,
-        has_active_connection: hasActiveConnection,
+        is_connected: isConnected,
         is_authorized: isAuthorized,
         is_expired: isExpired,
-        expires_at: latestConnection?.expires_at,
+        is_active: connection.is_active,
+        expires_at: connection.expires_at,
         current_time: new Date().toISOString()
       }
     };
@@ -165,7 +190,9 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       error: catchError instanceof Error ? catchError.message : 'Unknown error occurred',
       error_type: 'unexpected_error',
-      is_twitter_connected: false
+      is_twitter_connected: false,
+      is_authorized: false,
+      is_expired: false
     }), {
       status: 500,
       headers: {

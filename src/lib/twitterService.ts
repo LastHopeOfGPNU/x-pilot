@@ -244,43 +244,33 @@ class TwitterService {
 
   // 保存连接信息到数据库
   private async saveConnection(tokenData: any, userInfo: TwitterUser): Promise<TwitterConnection> {
-    // 获取当前认证用户
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // 获取当前session用于认证
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
-    if (userError || !user) {
+    if (sessionError || !session) {
       throw new Error('用户未登录，无法保存 Twitter 连接');
     }
 
-    // 先停用现有的Twitter连接
-    await supabase
-      .from('user_social_connections')
-      .update({ is_active: false })
-      .eq('user_id', user.id)
-      .eq('platform', 'twitter');
-
-    // 插入新的连接记录
-    const { data, error } = await supabase
-      .from('user_social_connections')
-      .insert({
-        user_id: user.id,
-        platform: 'twitter',
-        platform_user_id: userInfo.id,
-        platform_username: userInfo.username,
-        access_token: tokenData.access_token,
-        refresh_token: tokenData.refresh_token,
-        token_type: tokenData.token_type || 'Bearer',
-        expires_at: tokenData.expires_in ? 
-          new Date(Date.now() + tokenData.expires_in * 1000).toISOString() : null,
-        scope: tokenData.scope
-      })
-      .select()
-      .single();
+    // 调用边缘函数保存连接
+    const { data, error } = await supabase.functions.invoke('save-twitter-connection', {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: {
+        token_data: tokenData,
+        user_info: userInfo
+      }
+    });
 
     if (error) {
       throw new Error(`Failed to save connection: ${error.message}`);
     }
 
-    return data;
+    if (!data.success || !data.connection) {
+      throw new Error('Failed to save connection: Invalid response from edge function');
+    }
+
+    return data.connection;
   }
   
   // 获取用户的Twitter连接
@@ -520,44 +510,33 @@ class TwitterService {
         throw new Error('No refresh token available');
       }
 
-      // 使用 Supabase Edge Function 作为代理
+      // 获取当前session用于认证
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        throw new Error('用户未登录');
+      }
+
+      // 使用 Supabase Edge Function 刷新token（现在包含数据库更新）
       const { data, error } = await supabase.functions.invoke('twitter-refresh-token', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: {
-          refreshToken: connection.refresh_token,
-          clientId: this.clientId,
-          clientSecret: this.clientSecret
+          refresh_token: connection.refresh_token
         }
       });
 
       if (error) {
-  
         throw new Error(`Failed to refresh token: ${error.message}`);
       }
 
       const tokenData = data;
       
-      // 更新数据库中的token
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        throw new Error('用户未登录');
-      }
-
-      await supabase
-        .from('user_social_connections')
-        .update({
-          access_token: tokenData.access_token,
-          refresh_token: tokenData.refresh_token || connection.refresh_token,
-          expires_at: tokenData.expires_in ? 
-            new Date(Date.now() + tokenData.expires_in * 1000).toISOString() : null
-        })
-        .eq('user_id', user.id)
-        .eq('platform', 'twitter')
-        .eq('is_active', true);
-
+      // twitter-refresh-token边缘函数现在已经处理了数据库更新
+      // 直接返回新的access token
       return tokenData.access_token;
     } catch (error) {
-
       throw error;
     }
   }
