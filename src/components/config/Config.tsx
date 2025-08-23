@@ -124,13 +124,13 @@ const Config: React.FC<ConfigProps> = ({ onItemClick, selectedItemId }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg border border-gray-200 shadow-sm w-full">
+    <div className="flex flex-col w-2/3 h-full bg-white rounded-lg border border-gray-200 shadow-sm">
       {/* Header */}
       <div className="flex-shrink-0 p-6 border-b border-gray-200">
-        <h2 className="mb-4 text-xl font-semibold text-gray-900">Configuration Management</h2>
+        <h2 className="mb-4 text-xl font-semibold text-gray-900">Properties</h2>
         
         {/* Tab Navigation - Only Reply and Repost */}
-        <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 mb-4">
+        <div className="flex p-1 mb-4 space-x-1 bg-gray-100 rounded-lg">
           <button
             onClick={() => setActiveTab('reply')}
             className={`flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -159,36 +159,34 @@ const Config: React.FC<ConfigProps> = ({ onItemClick, selectedItemId }) => {
         <div className="flex items-center space-x-2">
           <Settings size={20} className="text-gray-600" />
           <span className="text-sm font-medium text-gray-600">
-            {filteredItems.length} configurations
+            {filteredItems.length} properties
           </span>
+          {loading && (
+            <div className="w-4 h-4 rounded-full border-b-2 border-blue-500 animate-spin"></div>
+          )}
         </div>
       </div>
       
       {/* Content */}
       <div className="overflow-y-auto flex-1 p-6 space-y-4">
-        {loading ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading configuration data...</p>
-          </div>
-        ) : error ? (
-          <div className="text-center py-8">
-            <div className="text-red-500 mb-4">
+        {error ? (
+          <div className="py-8 text-center">
+            <div className="mb-4 text-red-500">
               <Settings size={48} className="mx-auto mb-2" />
               <p className="text-lg font-medium">Loading Failed</p>
             </div>
-            <p className="text-gray-600 mb-4">{error}</p>
+            <p className="mb-4 text-gray-600">{error}</p>
             <button
               onClick={fetchConfigItems}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="px-4 py-2 text-white bg-blue-500 rounded-lg transition-colors hover:bg-blue-600"
             >
-              重试
+              Retry
             </button>
           </div>
-        ) : filteredItems.length === 0 ? (
-          <div className="text-center py-8">
-            <Settings size={48} className="mx-auto text-gray-400 mb-4" />
-            <p className="text-gray-500">No configuration items</p>
+        ) : filteredItems.length === 0 && !loading ? (
+          <div className="py-8 text-center">
+            <Settings size={48} className="mx-auto mb-4 text-gray-400" />
+            <p className="text-gray-500">No property items</p>
           </div>
         ) : (
           filteredItems.map((item) => (
@@ -205,12 +203,12 @@ const Config: React.FC<ConfigProps> = ({ onItemClick, selectedItemId }) => {
                 <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-medium text-gray-600">Reply Style:</span>
-                    <span className="text-sm font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
+                    <span className="px-2 py-1 text-sm font-semibold text-blue-600 bg-blue-50 rounded-md">
                       {formatReplyStyle(item.style)}
                     </span>
                   </div>
                   <div className="relative group">
-                    <label className="relative inline-flex items-center cursor-not-allowed opacity-50" onClick={(e) => e.stopPropagation()}>
+                    <label className="inline-flex relative items-center opacity-50 cursor-not-allowed" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={item.enabled}
@@ -220,16 +218,16 @@ const Config: React.FC<ConfigProps> = ({ onItemClick, selectedItemId }) => {
                       <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-gray-400"></div>
                     </label>
                     {/* Tooltip */}
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                    <div className="absolute bottom-full left-1/2 z-10 px-2 py-1 mb-2 text-xs text-white whitespace-nowrap bg-gray-800 rounded opacity-0 transition-opacity duration-200 transform -translate-x-1/2 pointer-events-none group-hover:opacity-100">
                       Coming soon!
-                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                      <div className="absolute top-full left-1/2 w-0 h-0 border-t-4 border-r-4 border-l-4 border-transparent transform -translate-x-1/2 border-t-gray-800"></div>
                     </div>
                   </div>
                 </div>
 
                 {/* Title - New line */}
                 <div className="mb-3">
-                  <h3 className="font-semibold text-gray-900 text-base leading-tight">
+                  <h3 className="text-base font-semibold leading-tight text-gray-900">
                     {item.title}
                   </h3>
                 </div>
@@ -251,7 +249,7 @@ const Config: React.FC<ConfigProps> = ({ onItemClick, selectedItemId }) => {
                   
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-gray-600 text-sm mb-2 line-clamp-2">
+                    <p className="mb-2 text-sm text-gray-600 line-clamp-2">
                       {item.content}
                     </p>
                     <div className="flex items-center space-x-2 text-xs text-gray-500">

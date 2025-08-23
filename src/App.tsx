@@ -374,7 +374,7 @@ const AppContent: React.FC = () => {
   const showAutoEngagement = activeMenuItem === 'Auto Engagement';
   const showPostThreadQueue = activeMenuItem === 'Get Post/Thread';
   const showMarketingStrategy = activeMenuItem === 'Marketing Strategy';
-  const showConfig = activeMenuItem === 'Config';
+  const showProperties = activeMenuItem === 'Properties';
   const showProfile = activeMenuItem === 'Profile';
 
   return (
@@ -407,7 +407,7 @@ const AppContent: React.FC = () => {
                   initialSection={profileInitialSection} 
                   onNavigate={handleDashboardNavigate}
                 />
-              ) : showConfig ? (
+              ) : showProperties ? (
                 <Config 
                   onItemClick={handleConfigItemClick} 
                   selectedItemId={selectedConfigItem?.id?.toString()}
