@@ -465,7 +465,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="flex justify-center items-center min-h-screen h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center">
           <Loader2 className="mx-auto mb-4 w-12 h-12 text-blue-600 animate-spin" />
           <p className="text-gray-600">Loading onboarding...</p>
@@ -476,7 +476,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
 
   if (error) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="flex justify-center items-center min-h-screen h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center">
           <AlertCircle className="mx-auto mb-4 w-12 h-12 text-red-600" />
           <p className="mb-4 text-red-600">{error}</p>
@@ -519,8 +519,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
   ];
 
   return (
-    <div className="overflow-y-auto min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container flex flex-col px-4 py-4 mx-auto min-h-full sm:py-8">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="container flex flex-col flex-1 px-4 py-4 mx-auto sm:py-8">
         {/* Progress Bar */}
         <div className="mb-6 sm:mb-12">
           <div className="flex justify-center items-center">
@@ -568,10 +568,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
         </div>
 
         {/* Step Content */}
-        <div className="mx-auto max-w-4xl">
+        <div className="flex-1 flex flex-col mx-auto max-w-4xl">
           {/* START Step */}
           {currentStep === 'START' && (
-            <div className="p-4 rounded-2xl border shadow-lg backdrop-blur-sm bg-white/60 border-gray-200/30 sm:p-8 md:p-12">
+            <div className="flex-1 flex flex-col justify-center p-4 rounded-2xl border shadow-lg backdrop-blur-sm bg-white/60 border-gray-200/30 sm:p-8 md:p-12 min-h-[60vh]">
               <div className="text-center">
                 <div className="mb-6 sm:mb-12">
                   <h1 className="mb-4 text-3xl font-bold text-gray-900 sm:text-4xl md:text-5xl sm:mb-6">
@@ -647,7 +647,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
 
           {/* CONNECT Step */}
           {currentStep === 'CONNECT' && (
-            <div className="p-4 rounded-2xl border shadow-lg backdrop-blur-sm bg-white/60 border-gray-200/30 sm:p-8 md:p-12">
+            <div className="flex-1 flex flex-col justify-center p-4 rounded-2xl border shadow-lg backdrop-blur-sm bg-white/60 border-gray-200/30 sm:p-8 md:p-12 min-h-[60vh]">
               <div className="text-center">
                 <div className="mb-6 sm:mb-8">
                 <div className="flex flex-col justify-between items-center mb-4 space-y-4 sm:flex-row sm:mb-6 sm:space-y-0">
@@ -811,8 +811,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
 
           {/* PICK_ACCOUNTS Step */}
           {currentStep === 'PICK_ACCOUNTS' && (
-            <div className="p-8 rounded-2xl border shadow-lg backdrop-blur-sm bg-white/60 border-gray-200/30 md:p-12">
-              <div className="space-y-6">
+            <div className="flex-1 flex flex-col p-8 rounded-2xl border shadow-lg backdrop-blur-sm bg-white/60 border-gray-200/30 md:p-12 min-h-[70vh]">
+              <div className="flex-1 flex flex-col space-y-6">
               <div className="text-center">
                 <Users className="mx-auto mb-4 w-16 h-16 text-blue-600" />
                 <h2 className="mb-2 text-2xl font-bold text-gray-900">Pick Your Inspiration Accounts</h2>
@@ -838,7 +838,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                   <p className="mt-2 text-sm text-gray-500">Please check your outreach requests</p>
                 </div>
               ) : (
-                <div className="grid overflow-y-auto grid-cols-1 gap-4 max-h-96 md:grid-cols-2">
+                <div className="flex-1 grid overflow-y-auto grid-cols-1 gap-4 md:grid-cols-2" style={{maxHeight: 'calc(70vh - 300px)'}}>
                   {inspirationAccounts.map((account) => (
                   <div key={account.id} className="p-4 bg-white rounded-lg border border-gray-200 transition-shadow hover:shadow-md">
                     <div className="flex items-start space-x-3">
@@ -893,7 +893,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
               )}
               
               {/* Navigation Buttons */}
-              <div className="flex justify-between pt-6">
+              <div className="flex justify-between pt-6 mt-auto">
                 <button
                   onClick={handlePreviousStep}
                   className="inline-flex items-center px-6 py-3 font-medium text-gray-700 bg-gray-200 rounded-lg transition-colors hover:bg-gray-300"
@@ -924,7 +924,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
 
           {/* ENGAGEMENT Step */}
           {currentStep === 'ENGAGEMENT' && (
-            <div className="p-8 rounded-2xl border shadow-lg backdrop-blur-sm bg-white/60 border-gray-200/30 md:p-12">
+            <div className="flex-1 flex flex-col justify-center p-8 rounded-2xl border shadow-lg backdrop-blur-sm bg-white/60 border-gray-200/30 md:p-12 min-h-[60vh]">
               <div className="space-y-8 text-center">
               <div className="mb-8">
                 <Zap className="mx-auto mb-4 w-16 h-16 text-purple-600" />
