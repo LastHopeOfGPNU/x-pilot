@@ -49,10 +49,12 @@ export interface InspirationAccount {
   bio: string;
   avatar: string;
   followers: number;
+  following?: number;
   likes: number;
+  tweets?: number;
   isTargeted: boolean;
-  starred?: boolean;
-  verified?: boolean;
+  starred: boolean;
+  verified: boolean;
 }
 
 export interface Card {

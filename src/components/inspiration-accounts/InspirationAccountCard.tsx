@@ -1,6 +1,6 @@
 import React from 'react';
 import { InspirationAccount } from '../../types';
-import { CheckCircle, Users, Heart, Star } from 'lucide-react';
+import { CheckCircle, Users, Heart, Star, ExternalLink, UserPlus, MessageCircle } from 'lucide-react';
 
 interface InspirationAccountCardProps {
   account: InspirationAccount;
@@ -166,19 +166,50 @@ const InspirationAccountCard: React.FC<InspirationAccountCardProps> = ({
       </p>
 
       {/* Stats */}
-      <div className="flex items-center space-x-4">
-        <div className="flex items-center space-x-1">
-          <Users size={14} className="text-gray-500" />
-          <span className="text-xs text-gray-600">
-            {formatNumber(account.followers)}
-          </span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-1">
+            <Users size={14} className="text-gray-500" />
+            <span className="text-xs text-gray-600">
+              {formatNumber(account.followers)}
+            </span>
+          </div>
+          {account.following && (
+            <div className="flex items-center space-x-1">
+              <UserPlus size={14} className="text-gray-500" />
+              <span className="text-xs text-gray-600">
+                {formatNumber(account.following)}
+              </span>
+            </div>
+          )}
+          {account.tweets && (
+            <div className="flex items-center space-x-1">
+              <MessageCircle size={14} className="text-gray-500" />
+              <span className="text-xs text-gray-600">
+                {formatNumber(account.tweets)}
+              </span>
+            </div>
+          )}
+          <div className="flex items-center space-x-1">
+            <Heart size={14} className="text-gray-500" />
+            <span className="text-xs text-gray-600">
+              {formatNumber(account.likes)}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center space-x-1">
-          <Heart size={14} className="text-gray-500" />
-          <span className="text-xs text-gray-600">
-            {formatNumber(account.likes)}
-          </span>
-        </div>
+        
+        {/* X Platform Link Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            const username = account.handle.replace('@', '');
+            window.open(`https://x.com/${username}`, '_blank', 'noopener,noreferrer');
+          }}
+          className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 hover:bg-blue-100 transition-colors group"
+          title="View on X"
+        >
+          <ExternalLink size={12} className="text-gray-600 group-hover:text-blue-600" />
+        </button>
       </div>
     </div>
   );

@@ -194,14 +194,19 @@ class InspirationAccountService {
 
   // 将API响应转换为前端使用的InspirationAccount格式
   transformToInspirationAccount(apiAccount: InspirationAccountResponse): InspirationAccount {
+    // 确保username前只有一个@符号
+    const cleanUsername = apiAccount.username.startsWith('@') ? apiAccount.username : `@${apiAccount.username}`;
+    
     return {
       id: parseInt(apiAccount.id),
       name: apiAccount.display_name,
-      handle: `@${apiAccount.username}`,
+      handle: cleanUsername,
       bio: apiAccount.description || '',
       avatar: apiAccount.profile_image_url || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
       followers: apiAccount.followers_count,
-      likes: 0, // API doesn't provide likes count, using default
+      following: apiAccount.following_count,
+      likes: apiAccount.like_count || 0,
+      tweets: apiAccount.tweet_count,
       isTargeted: apiAccount.is_target,
       starred: apiAccount.is_starred,
       verified: apiAccount.verified || false

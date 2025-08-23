@@ -492,16 +492,28 @@ const ResultsArea: React.FC<ResultsAreaProps> = ({ selectedCard, selectedAccount
                 {account.verified && <VerifiedBadge />}
                 {account.starred && <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />}
               </div>
-              <p className="text-blue-100 mb-2">@{account.handle}</p>
+              <p className="text-blue-100 mb-2">{account.handle.startsWith('@') ? account.handle : `@${account.handle}`}</p>
               <p className="text-sm text-blue-100 mb-4">{account.bio}</p>
               <div className="flex items-center space-x-6 text-sm">
                 <div className="flex items-center space-x-1">
                   <Users className="w-4 h-4" />
-                  <span>{formatNumber(account.followers)} followers</span>
+                  <span>{formatNumber(account.followers)}</span>
                 </div>
+                {account.following && (
+                  <div className="flex items-center space-x-1">
+                    <Users className="w-4 h-4" />
+                    <span>{formatNumber(account.following)}</span>
+                  </div>
+                )}
+                {account.tweets && (
+                  <div className="flex items-center space-x-1">
+                    <MessageSquare className="w-4 h-4" />
+                    <span>{formatNumber(account.tweets)}</span>
+                  </div>
+                )}
                 <div className="flex items-center space-x-1">
                   <Heart className="w-4 h-4" />
-                  <span>{formatNumber(account.likes)} likes</span>
+                  <span>{formatNumber(account.likes)}</span>
                 </div>
               </div>
             </div>
@@ -561,7 +573,7 @@ const ResultsArea: React.FC<ResultsAreaProps> = ({ selectedCard, selectedAccount
                         <div className="flex items-center space-x-2 mb-3">
                           <span className="font-semibold text-gray-900">{account.name}</span>
                           {account.verified && <VerifiedBadge />}
-                          <span className="text-gray-500">@{account.handle}</span>
+                          <span className="text-gray-500">{account.handle.startsWith('@') ? account.handle : `@${account.handle}`}</span>
                           <span className="text-gray-500">·</span>
                           <span className="text-gray-500 text-sm">{post.time}</span>
                         </div>

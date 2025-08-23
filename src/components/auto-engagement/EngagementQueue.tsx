@@ -502,7 +502,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
   if (showInspirationAccounts) {
     // Inspiration Accounts display logic
     return (
-      <div className="flex flex-col h-full bg-white rounded-lg border border-gray-200 shadow-sm min-w-[320px]">
+      <div className="flex flex-col h-full bg-white rounded-lg border border-gray-200 shadow-sm w-full max-w-lg">
         {/* Header */}
         <div className="flex-shrink-0 p-4 sm:p-6 border-b border-gray-200">
           <h2 className="mb-4 text-xl font-semibold text-gray-900">{title}</h2>
