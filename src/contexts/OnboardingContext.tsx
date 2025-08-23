@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onboardingService, OnboardingStatusResponse } from '../lib/onboardingService';
+import { logger } from '../utils/logger';
 
 interface OnboardingContextType {
   onboardingStatus: OnboardingStatusResponse | null;
@@ -36,7 +37,6 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
       const isOnboardingMockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
       
       if (isOnboardingMockMode) {
-        console.log('Onboarding: Using mock mode');
         const mockStatus: OnboardingStatusResponse = {
           is_finished: false,
           current_step: 'TWITTER_AUTH'
@@ -48,7 +48,7 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
       const status = await onboardingService.getCurrentStep();
       setOnboardingStatus(status);
     } catch (err) {
-      console.error('Failed to fetch onboarding status:', err);
+      logger.error('Failed to fetch onboarding status:', err);
       setError('获取onboarding状态失败');
       // 如果获取失败，默认为已完成状态
       setOnboardingStatus({ is_finished: true, current_step: 'ENGAGEMENT' });

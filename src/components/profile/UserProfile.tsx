@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { User, LogOut, Settings, Mail, Calendar, Shield } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { logger } from '../../utils/logger'
 
 const UserProfile: React.FC = () => {
   const { user, signOut } = useAuth()
@@ -11,7 +12,7 @@ const UserProfile: React.FC = () => {
     try {
       await signOut()
     } catch (error) {
-      console.error('登出失败:', error)
+      logger.error('登出失败:', error)
     } finally {
       setLoading(false)
     }

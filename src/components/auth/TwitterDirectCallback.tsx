@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Twitter, CheckCircle, XCircle, Loader, ArrowRight } from 'lucide-react';
 import { twitterService } from '../../lib/twitterService';
+import { logger } from '../../utils/logger';
 
 export const TwitterDirectCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -71,7 +72,7 @@ export const TwitterDirectCallback: React.FC = () => {
                 window.close();
               }, 1500);
             } catch (error) {
-              console.error('Failed to communicate with parent window:', error);
+              logger.error('Failed to communicate with parent window:', error);
               // 如果无法通信，则正常跳转
               navigate('/?section=profile&tab=twitter-auth');
             }
@@ -94,7 +95,7 @@ export const TwitterDirectCallback: React.FC = () => {
           throw new Error(result.error || 'Connection failed, please try again');
         }
       } catch (error) {
-        console.error('Twitter callback processing failed:', error);
+        logger.error('Twitter callback processing failed:', error);
         setStatus('error');
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         
@@ -119,7 +120,7 @@ export const TwitterDirectCallback: React.FC = () => {
               error: errorMessage
             }, window.location.origin);
           } catch (e) {
-            console.error('Failed to communicate error to parent window:', e);
+            logger.error('Failed to communicate error to parent window:', e);
           }
         }
         } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('network')) {
@@ -193,7 +194,7 @@ export const TwitterDirectCallback: React.FC = () => {
                         }, window.location.origin);
                         window.close();
                       } catch (error) {
-                        console.error('Failed to communicate with parent window:', error);
+                        logger.error('Failed to communicate with parent window:', error);
                         // 如果无法通信，则正常跳转
                         navigate('/?section=profile&tab=twitter-auth');
                       }
@@ -229,7 +230,7 @@ export const TwitterDirectCallback: React.FC = () => {
                         }, window.location.origin);
                         window.close();
                       } catch (error) {
-                        console.error('Failed to communicate with parent window:', error);
+                        logger.error('Failed to communicate with parent window:', error);
                         // 如果无法通信，则正常跳转
                         navigate('/?section=profile&tab=twitter-auth');
                       }

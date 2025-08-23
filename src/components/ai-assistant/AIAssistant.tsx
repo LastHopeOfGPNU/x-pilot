@@ -26,6 +26,7 @@ import {
 } from '../../utils/aiAssistantUtils';
 import { processMessages } from './messageProcessor';
 import { devConfigService } from '../../lib/devConfigService';
+import { logger } from '../../utils/logger';
 
 // 类型定义已移至 ../types/aiAssistant.ts
 // 常量定义已移至 ../constants/aiAssistant.ts
@@ -222,7 +223,6 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
         stopGeneration();
       } catch (error) {
         // 忽略停止生成时的错误，这是正常的用户操作
-        console.log('Stop generation completed');
       }
 
       setIsSending(false); // 重置发送状态
@@ -274,7 +274,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       setIsSending(false);
 
     } catch (error) {
-      console.error('Error sending message:', error);
+      logger.error('Error sending message:', error);
 
       // Check if we should retry (max 4 retries = 5 total attempts)
       if (currentRetryCount < 4 && !shouldStopRetry) {
@@ -521,7 +521,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                     <div className="relative">
                       {/* Input Suggestions */}
                       <div className="mb-3">
-                        <div className="flex flex-nowrap gap-2 mb-3 overflow-x-auto scrollbar-hide">
+                        <div className="flex overflow-x-auto flex-nowrap gap-2 mb-3 scrollbar-hide">
                           <button
                             onClick={() => {
                               // 先自动选择@reply工具
@@ -536,7 +536,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                             className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-full hover:bg-gray-100 hover:text-[#4792E6] hover:border-[#4792E6] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#4792E6] focus:ring-opacity-20 whitespace-nowrap flex-shrink-0"
                           >
                             <span className="mr-1.5">🤝</span>
-                            help me reply
+                            @reply help me reply
                           </button>
                         </div>
                       </div>
@@ -761,7 +761,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                 <div className="relative">
                   {/* Input Suggestions */}
                   <div className="mb-3">
-                    <div className="flex flex-nowrap gap-2 mb-3 overflow-x-auto scrollbar-hide">
+                    <div className="flex overflow-x-auto flex-nowrap gap-2 mb-3 scrollbar-hide">
                       <button
                         onClick={() => {
                             // 先自动选择@reply工具

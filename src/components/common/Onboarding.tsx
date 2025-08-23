@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { InspirationAccount } from '../../types';
 import EnvSwitcher from '../config/EnvSwitcher';
 import ConfirmationModal from './ConfirmationModal';
+import { logger } from '../../utils/logger';
 
 interface OnboardingProps {
   onComplete: () => void;
@@ -35,7 +36,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
       const mockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
       
       if (!user && !mockMode) {
-        console.log('No user and not in mock mode - skipping Twitter connection check');
         return;
       }
 
@@ -53,10 +53,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
           setTwitterConnection(null);
         }
       } catch (error) {
-        console.error('Error checking Twitter connection:', error);
+        logger.error('Error checking Twitter connection:', error);
         // In mock mode, simulate connection status
         if (mockMode) {
-          console.log('Mock mode - simulating Twitter connection status');
           setTwitterConnection(null); // Default to not connected for testing
           setTwitterStatus({
             has_records: false,
@@ -91,11 +90,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
         
         setInspirationAccounts(transformedAccounts);
       } catch (apiError) {
-        console.error('API request failed:', apiError);
+        logger.error('API request failed:', apiError);
         
         // In mock mode, fallback to mock data if API fails
         if (mockMode) {
-          console.log('API failed, using mock inspiration accounts data in mock mode');
           const mockAccounts = [
             { id: 1, username: 'elonmusk', display_name: 'Elon Musk', followers_count: 150000000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1683325380441128960/yRsRRjGO_400x400.jpg' },
             { id: 2, username: 'naval', display_name: 'Naval', followers_count: 2000000, starred: false, isTargeted: false, profile_image_url: 'https://pbs.twimg.com/profile_images/1296667294148382721/9Pr6XrPB_400x400.jpg' },
@@ -112,7 +110,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
         }
       }
     } catch (error) {
-      console.error('Failed to fetch inspiration accounts:', error);
+      logger.error('Failed to fetch inspiration accounts:', error);
       setError('Failed to load inspiration accounts');
     } finally {
       setAccountsLoading(false);
@@ -126,10 +124,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
         setLoading(true);
         
         // Basic initialization without API calls
-        console.log('Onboarding component initialized');
         
       } catch (error) {
-        console.error('Failed to initialize onboarding component:', error);
+        logger.error('Failed to initialize onboarding component:', error);
         setError(`Failed to initialize: ${error.message}`);
       } finally {
         setLoading(false);
@@ -146,7 +143,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
         const mockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
         
         if (!user && !mockMode) {
-          console.log('No user and not in mock mode - skipping Twitter connection check');
           return;
         }
 
@@ -164,10 +160,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
             setTwitterConnection(null);
           }
         } catch (error) {
-          console.error('Error checking Twitter connection:', error);
+          logger.error('Error checking Twitter connection:', error);
           // In mock mode, simulate connection status
           if (mockMode) {
-            console.log('Mock mode - simulating Twitter connection status');
             setTwitterConnection(null); // Default to not connected for testing
             setTwitterStatus({
               has_records: false,
@@ -251,13 +246,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                  inspirationAccountService.batchToggleStarAccounts(selectedAccountIds, 'add')
                ]);
              } catch (error) {
-               console.error('Failed to save inspiration accounts:', error);
+               logger.error('Failed to save inspiration accounts:', error);
                setError('Failed to save inspiration accounts');
                return;
              }
            }
-         } else {
-           console.log('Mock mode - skipping account processing API calls but progressing step');
          }
        }
       
@@ -270,7 +263,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
         setCurrentStep(nextStep.current_step);
       }
     } catch (error) {
-      console.error('Failed to proceed to next step:', error);
+      logger.error('Failed to proceed to next step:', error);
       setError('Failed to proceed to next step');
     } finally {
       setActionLoading(false);
@@ -298,7 +291,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
         // Token有效，更新连接状态
         setTwitterConnection(tokenCheck.connection);
         setActionLoading(false);
-        console.log('Twitter connection is valid and refreshed if needed');
         return;
       }
       
@@ -319,7 +311,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
           setActionLoading(false);
           setError(null);
           window.removeEventListener('message', handleMessage);
-          console.log('Twitter authorization successful via popup');
           
           // 重新检查连接状态以确保界面同步
           checkTwitterConnection();
@@ -328,7 +319,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
           setError(event.data.error || 'Twitter authorization failed');
           setActionLoading(false);
           window.removeEventListener('message', handleMessage);
-          console.error('Twitter authorization failed:', event.data.error);
+          logger.error('Twitter authorization failed:', event.data.error);
         }
       };
       
@@ -355,7 +346,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
       }, 300000);
       
     } catch (error) {
-      console.error('Failed to connect Twitter:', error);
+      logger.error('Failed to connect Twitter:', error);
       setError('Failed to connect Twitter account');
       setActionLoading(false);
     }
@@ -384,7 +375,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
           setActionLoading(false);
           setError(null);
           window.removeEventListener('message', handleMessage);
-          console.log('Twitter reconnection successful via popup - database overwrite refresh');
           
           // 重新检查连接状态以确保界面同步
           checkTwitterConnection();
@@ -393,7 +383,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
           setError(event.data.error || 'Twitter reconnection failed');
           setActionLoading(false);
           window.removeEventListener('message', handleMessage);
-          console.error('Twitter reconnection failed:', event.data.error);
+          logger.error('Twitter reconnection failed:', event.data.error);
         }
       };
       
@@ -420,7 +410,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
       }, 300000);
       
     } catch (error) {
-      console.error('Failed to reconnect Twitter:', error);
+      logger.error('Failed to reconnect Twitter:', error);
       setError('Failed to reconnect Twitter account');
       setActionLoading(false);
     }
@@ -443,13 +433,12 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
         
         // 重新检查连接状态以确保界面同步
         await checkTwitterConnection();
-        console.log('Twitter connection successfully disconnected');
         setShowDisconnectModal(false);
       } else {
         setError(result.error || 'Failed to disconnect Twitter account');
       }
     } catch (error) {
-      console.error('Failed to disconnect Twitter:', error);
+      logger.error('Failed to disconnect Twitter:', error);
       setError('Failed to disconnect Twitter account');
     } finally {
       setDisconnectLoading(false);

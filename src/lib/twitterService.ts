@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { User } from '@supabase/supabase-js';
+import { logger } from '../utils/logger';
 
 // Twitter连接状态响应接口
 export interface TwitterConnectionStatus {
@@ -135,7 +136,7 @@ class TwitterService {
 
       return `https://twitter.com/i/oauth2/authorize?${params.toString()}`;
     } catch (error) {
-
+      logger.error('Failed to get auth URL:', error);
       throw error;
     }
   }
@@ -192,7 +193,7 @@ class TwitterService {
 
       return { success: true, data: connection };
     } catch (error) {
-
+      logger.error('Failed to handle callback:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return { success: false, error: errorMessage };
     }
@@ -217,7 +218,7 @@ class TwitterService {
       
       return data;
     } catch (error) {
-
+      logger.error('Failed to start Twitter auth:', error);
       throw error;
     }
   }
@@ -234,7 +235,7 @@ class TwitterService {
     });
 
     if (error) {
-
+      logger.error('Failed to fetch user info:', error);
       throw new Error(`Failed to fetch user info: ${error.message}`);
     }
 
@@ -379,13 +380,13 @@ class TwitterService {
       });
 
       if (error) {
-  
+        logger.error('Failed to disconnect Twitter:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true };
     } catch (error) {
-
+      logger.error('Failed to disconnect Twitter:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -409,7 +410,7 @@ class TwitterService {
     });
 
     if (error) {
-
+      logger.error('Twitter API call failed:', error);
       throw new Error(`Twitter API call failed: ${error.message}`);
     }
 
@@ -422,7 +423,7 @@ class TwitterService {
       const data = await this.makeTwitterApiCall('users/me?user.fields=id,username,name,profile_image_url,verified,public_metrics');
       return data.data;
     } catch (error) {
-
+      logger.error('Failed to get current user:', error);
       return null;
     }
   }
@@ -449,15 +450,13 @@ class TwitterService {
         
         // 如果token已过期或即将在5分钟内过期，尝试刷新
         if (expiresAt <= new Date(now.getTime() + 5 * 60 * 1000)) {
-          console.log('Token expired or expiring soon, attempting refresh...');
-          
           try {
             await this.refreshTwitterToken();
             // 重新获取更新后的连接信息
             const refreshedConnection = await this.getUserConnection();
             return { isValid: true, connection: refreshedConnection };
           } catch (refreshError) {
-            console.error('Failed to refresh token:', refreshError);
+            logger.error('Failed to refresh token:', refreshError);
             return { isValid: false, connection };
           }
         }
@@ -465,7 +464,7 @@ class TwitterService {
 
       return { isValid: true, connection };
     } catch (error) {
-      console.error('Error checking token validity:', error);
+      logger.error('Error checking token validity:', error);
       return { isValid: false, connection: null };
     }
   }
@@ -482,7 +481,7 @@ class TwitterService {
       const authUrl = await this.getAuthUrl();
       window.location.href = authUrl;
     } catch (error) {
-
+      logger.error('Failed to post tweet:', error);
       throw error;
     }
   }

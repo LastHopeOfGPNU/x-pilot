@@ -3,6 +3,7 @@ import { User, Mail, Calendar, MapPin, Link, Star, Settings, Edit3, Check, X, Ca
 import { useAuth } from '../../contexts/AuthContext';
 import { twitterService, TwitterConnection, TwitterConnectionStatus } from '../../lib/twitterService';
 import ConfirmationModal from '../common/ConfirmationModal';
+import { logger } from '../../utils/logger';
 
 interface ProfileProps {
   onClose?: () => void;
@@ -74,7 +75,7 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
           setTwitterConnection(null);
         }
       } catch (error) {
-        console.error('Error checking Twitter connection:', error);
+        logger.error('Error checking Twitter connection:', error);
         setTwitterStatus(null);
         setTwitterConnection(null);
       } finally {
@@ -119,7 +120,7 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
     try {
       await signOut();
     } catch (error) {
-      console.error('Error signing out:', error);
+      logger.error('Error signing out:', error);
     } finally {
       setLoading(false);
     }
@@ -142,7 +143,6 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
         // Token有效，更新连接状态
         setTwitterConnection(tokenCheck.connection);
         setConnectLoading(false);
-        console.log('Twitter connection is valid and refreshed if needed');
         return;
       }
 
@@ -162,13 +162,12 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
           setTwitterConnection(event.data.data);
           setConnectLoading(false);
           window.removeEventListener('message', handleMessage);
-          console.log('Twitter authorization successful via popup');
           
           // 重新检查连接状态以确保界面同步
           checkTwitterConnection();
         } else if (event.data.type === 'TWITTER_AUTH_ERROR') {
           // 授权失败
-          console.error('Twitter authorization failed:', event.data.error);
+          logger.error('Twitter authorization failed:', event.data.error);
           setConnectLoading(false);
           window.removeEventListener('message', handleMessage);
         } else if (event.data.type === 'TWITTER_AUTH_NAVIGATE') {
@@ -176,7 +175,6 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
           setConnectLoading(false);
           window.removeEventListener('message', handleMessage);
           // 这里可以根据需要进行页面跳转或其他操作
-          console.log('Twitter auth navigation requested:', event.data.url);
         }
       };
       
@@ -193,7 +191,7 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
       }, 1000);
       
     } catch (error) {
-      console.error('Error connecting to Twitter:', error);
+      logger.error('Error connecting to Twitter:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred while connecting to Twitter';
       alert(`Connection failed: ${errorMessage}`);
       setConnectLoading(false);
@@ -227,13 +225,12 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
           setTwitterConnection(event.data.data);
           setConnectLoading(false);
           window.removeEventListener('message', handleMessage);
-          console.log('Twitter reconnection successful via popup - database overwrite refresh');
           
           // 重新检查连接状态以确保界面同步
           checkTwitterConnection();
         } else if (event.data.type === 'TWITTER_AUTH_ERROR') {
           // 授权失败
-          console.error('Twitter reconnection failed:', event.data.error);
+          logger.error('Twitter reconnection failed:', event.data.error);
           setConnectLoading(false);
           window.removeEventListener('message', handleMessage);
         } else if (event.data.type === 'TWITTER_AUTH_NAVIGATE') {
@@ -241,7 +238,6 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
           setConnectLoading(false);
           window.removeEventListener('message', handleMessage);
           // 这里可以根据需要进行页面跳转或其他操作
-          console.log('Twitter auth navigation requested:', event.data.url);
         }
       };
       
@@ -258,7 +254,7 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
       }, 1000);
       
     } catch (error) {
-      console.error('Error reconnecting to Twitter:', error);
+      logger.error('Error reconnecting to Twitter:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred while reconnecting to Twitter';
       alert(`Reconnection failed: ${errorMessage}`);
       setConnectLoading(false);
@@ -281,13 +277,12 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
         // 重新检查连接状态以确保界面同步
         await checkTwitterConnection();
 
-        console.log('Twitter connection successfully disconnected');
         setShowDisconnectModal(false);
       } else {
-        console.error('Failed to disconnect Twitter:', result.error);
+        logger.error('Failed to disconnect Twitter:', result.error);
       }
     } catch (error) {
-      console.error('Error disconnecting Twitter:', error);
+      logger.error('Error disconnecting Twitter:', error);
     } finally {
       setDisconnectLoading(false);
     }

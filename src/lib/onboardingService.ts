@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { apiConfigService } from './apiConfigService';
+import { logger } from '../utils/logger';
 
 // Onboarding步骤类型
 export type OnboardingStep = 'START' | 'CONNECT' | 'PICK_ACCOUNTS' | 'ENGAGEMENT';
@@ -58,7 +59,7 @@ class OnboardingService {
 
         return await response.json();
       } catch (error) {
-        console.error('Error getting onboarding step:', error);
+        logger.error('Error getting onboarding step:', error);
         throw error;
       }
     }
@@ -79,7 +80,6 @@ class OnboardingService {
         mockOnboardingState.is_finished = true;
       }
       
-      console.log('Mock: Moving to next step:', mockOnboardingState);
       return {
         success: true,
         current_step: mockOnboardingState.current_step,
@@ -103,7 +103,7 @@ class OnboardingService {
 
         return await response.json();
       } catch (error) {
-        console.error('Error moving to next step:', error);
+        logger.error('Error moving to next step:', error);
         throw error;
       }
     }
@@ -115,11 +115,9 @@ class OnboardingService {
       // Mock implementation - 模拟延迟
       await new Promise(resolve => setTimeout(resolve, 600));
       
-      console.log('Mock: Completing step:', currentStep);
-      
       // 验证当前步骤是否匹配
       if (mockOnboardingState.current_step !== currentStep) {
-        console.warn('Mock: Step mismatch, syncing state');
+        logger.warn('Mock: Step mismatch, syncing state');
         mockOnboardingState.current_step = currentStep;
       }
       
@@ -134,7 +132,6 @@ class OnboardingService {
         // 保持current_step为ENGAGEMENT，因为这是最后一步
       }
       
-      console.log('Mock: Step completed, new state:', mockOnboardingState);
       return {
         success: true,
         current_step: mockOnboardingState.current_step,
@@ -158,7 +155,7 @@ class OnboardingService {
 
         return await response.json();
       } catch (error) {
-        console.error('Error completing onboarding step:', error);
+        logger.error('Error completing onboarding step:', error);
         throw error;
       }
     }
@@ -170,7 +167,6 @@ class OnboardingService {
       current_step: 'START',
       is_finished: false,
     };
-    console.log('Mock: Reset onboarding state');
   }
 
   // 获取API基础URL

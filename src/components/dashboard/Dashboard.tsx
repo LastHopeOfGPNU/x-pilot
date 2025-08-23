@@ -27,6 +27,7 @@ import { dashboardService, DashboardData, Account } from '../../lib/dashboardSer
 import { onboardingService } from '../../lib/onboardingService';
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { TwitterModal } from '../auth/TwitterModal';
+import { logger } from '../../utils/logger';
 
 // Loading Card Component
 const LoadingCard: React.FC = () => (
@@ -233,7 +234,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       cachedDataRef.current = data;
       setDashboardData(data);
     } catch (err) {
-      console.error('Failed to fetch dashboard data:', err);
+      logger.error('Failed to fetch dashboard data:', err);
       setError('Failed to load dashboard data. Please try again.');
       
       // 触发refresh按钮闪烁效果

@@ -7,6 +7,7 @@ import InspirationAccountCard from '../inspiration-accounts/InspirationAccountCa
 import Toast from '../common/Toast';
 import { inspirationAccountService } from '../../lib/inspirationAccountService';
 import { engagementService } from '../../lib/engagementService';
+import { logger } from '../../utils/logger';
 
 interface EngagementQueueProps {
   showInspirationAccounts?: boolean;
@@ -165,7 +166,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
         queue.target.clear();
       }
     } catch (error) {
-      console.error('Batch operation failed:', error);
+      logger.error('Batch operation failed:', error);
       showToast('Batch operation failed, restoring state', 'error');
       
       // If batch operation fails, notify all callbacks
@@ -267,7 +268,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
         setInspirationAccounts(transformedAccounts);
       }
     } catch (error) {
-      console.error('Failed to fetch inspiration accounts:', error);
+      logger.error('Failed to fetch inspiration accounts:', error);
       showToast('Failed to load accounts', 'error');
     } finally {
       setAccountsLoading(false);
@@ -319,7 +320,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
       
       setAutoReplyData(transformedCards);
     } catch (error) {
-      console.error('Failed to fetch engagement data:', error);
+      logger.error('Failed to fetch engagement data:', error);
       showToast('Failed to load engagement queue', 'error');
       // If API call fails, set to empty array instead of using mock data
       setAutoReplyData([]);
@@ -358,7 +359,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
       setAutoReplyData(prev => prev.filter(card => card.id !== cardId));
       showToast('Reply rejected successfully', 'info');
     } catch (error) {
-      console.error('Failed to reject reply:', error);
+      logger.error('Failed to reject reply:', error);
       showToast('Failed to reject reply', 'error');
     }
   };
@@ -375,7 +376,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
       setAutoReplyData(prev => prev.filter(card => card.id !== cardId));
       showToast('Reply posted successfully', 'success');
     } catch (error) {
-      console.error('Failed to post reply:', error);
+      logger.error('Failed to post reply:', error);
       showToast('Failed to post reply', 'error');
     }
   };

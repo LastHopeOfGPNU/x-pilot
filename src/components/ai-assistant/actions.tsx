@@ -18,7 +18,6 @@ export const useAIAssistantActions = () => {
     ],
     renderAndWaitForResponse: ({ status, args, respond }) => {
       // 根据CopilotKit文档，renderAndWaitForResponse的status有三个状态：'inProgress'、'executing'、'complete'
-      console.log('render', status, args)
       const getStatusDisplay = (currentStatus: string) => {
         switch (currentStatus) {
           case "inProgress":

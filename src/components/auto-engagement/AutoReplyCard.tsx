@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Heart, Repeat2, MessageSquare, X, Send, Edit3, Check, Eye } from 'lucide-react';
 import { Card } from '../../types';
 import ConfirmModal from '../common/ConfirmModal';
+import { logger } from '../../utils/logger';
 
 interface AutoReplyCardProps {
   card: Card;
@@ -52,7 +53,7 @@ const AutoReplyCard: React.FC<AutoReplyCardProps> = ({
       setShowConfirmModal(false);
       setIsPosting(false);
     } catch (error) {
-      console.error('Failed to post reply:', error);
+      logger.error('Failed to post reply:', error);
       setIsPosting(false);
     }
   };
@@ -63,7 +64,7 @@ const AutoReplyCard: React.FC<AutoReplyCardProps> = ({
       onPost?.(card.id, editedReply);
       setIsPosting(false);
     } catch (error) {
-      console.error('Failed to post reply:', error);
+      logger.error('Failed to post reply:', error);
       setIsPosting(false);
     }
   };
