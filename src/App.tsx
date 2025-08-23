@@ -176,6 +176,8 @@ const AppContent: React.FC = () => {
   const checkOnboardingStatus = useCallback(async () => {
       const isOnboardingMockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
       
+      // 设置加载状态
+      setOnboardingStatus(prev => ({ ...prev, loading: true }));
       
       // 如果启用了mock模式，强制显示onboarding
       if (isOnboardingMockMode) {
@@ -191,6 +193,7 @@ const AppContent: React.FC = () => {
       }
 
       try {
+        // 调用 /api/onboarding/step 接口
         const status = await onboardingService.getCurrentStep();
         setOnboardingStatus({
           isFinished: status.is_finished,
@@ -199,6 +202,7 @@ const AppContent: React.FC = () => {
           error: undefined
         });
       } catch (error) {
+        console.error('Failed to check onboarding status:', error);
         // 接口失败时直接显示主页面，不显示错误信息
         setOnboardingStatus({
           isFinished: true,
@@ -247,7 +251,7 @@ const AppContent: React.FC = () => {
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-blue-50">
         <div className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 rounded-full border-4 border-blue-200 animate-spin border-t-[#4792E6]"></div>
-          <p className="text-gray-600">Checking setup status...</p>
+          <p className="text-gray-600">Checking...</p>
         </div>
       </div>
     );
