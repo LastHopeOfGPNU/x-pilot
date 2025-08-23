@@ -510,6 +510,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
           <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 mb-4">
             <button
               onClick={() => setActiveTab('starred')}
+              data-guide="starred-tab"
               className={`flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === 'starred'
                   ? 'bg-white text-blue-600 shadow-sm'
@@ -608,6 +609,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
         <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 mb-4">
           <button
             onClick={() => setActiveTab('autoReply')}
+            data-guide="auto-reply-tab"
             className={`flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               activeTab === 'autoReply'
                 ? 'bg-white text-blue-600 shadow-sm'
@@ -619,6 +621,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('autoRepost')}
+            data-guide="auto-repost-tab"
             className={`flex-1 flex items-center justify-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
               activeTab === 'autoRepost'
                 ? 'bg-white text-blue-600 shadow-sm'

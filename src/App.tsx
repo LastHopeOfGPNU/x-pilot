@@ -18,6 +18,7 @@ import { Card, InspirationAccount, Post } from './types/index';
 import AIAssistant from './components/ai-assistant/AIAssistant';
 import EnvSwitcher from './components/config/EnvSwitcher';
 import Onboarding from './components/common/Onboarding';
+import GuideTour, { GuideStep } from './components/common/GuideTour';
 
 import { apiConfigService } from './lib/apiConfigService';
 import { onboardingService } from './lib/onboardingService';
@@ -74,6 +75,60 @@ const AppContent: React.FC = () => {
   const [apiBaseUrl, setApiBaseUrl] = useState<string>(apiConfigService.getApiBaseUrl());
   const [showCopilotDevConsole, setShowCopilotDevConsole] = useState(devConfigService.getShowCopilotDevConsole());
   const [copilotKitRuntimeUrl, setCopilotKitRuntimeUrl] = useState<string>(devConfigService.getCopilotKitRuntimeUrl());
+  
+  // 引导状态管理
+  const [isGuideActive, setIsGuideActive] = useState(false);
+  const [currentGuideStep, setCurrentGuideStep] = useState(0);
+  const [isFromOnboarding, setIsFromOnboarding] = useState(false);
+  
+  // 定义引导步骤
+  const guideSteps: GuideStep[] = [
+    {
+      id: 'auto-reply-tab',
+      title: '自动回复功能',
+      content: '这里是自动回复模块，您可以查看和管理所有需要回复的推文。系统会智能识别需要回复的内容，帮助您提高互动效率。',
+      targetSelector: '[data-guide="auto-reply-tab"]',
+      position: 'bottom'
+    },
+    {
+      id: 'auto-repost-tab',
+      title: '自动转发功能',
+      content: '自动转发模块让您可以轻松管理转发内容。选择合适的推文进行转发，扩大您的影响力和内容传播范围。',
+      targetSelector: '[data-guide="auto-repost-tab"]',
+      position: 'bottom'
+    },
+    {
+      id: 'starred-tab',
+      title: '星标内容',
+      content: '这里显示您标记为重要的内容。通过星标功能，您可以快速找到需要特别关注的推文和账户。',
+      targetSelector: '[data-guide="starred-tab"]',
+      position: 'bottom'
+    },
+    {
+      id: 'ai-chat',
+      title: 'AI 智能助手',
+      content: '我是您的AI助手，可以帮助您制定营销策略、分析数据、生成内容等。随时点击这里与我对话，获得专业的建议和支持。',
+      targetSelector: '[data-guide="ai-chat"]',
+      position: 'left'
+    }
+  ];
+  
+  // 引导处理函数
+  const handleGuideComplete = useCallback(() => {
+    setIsGuideActive(false);
+    setIsFromOnboarding(false);
+    setCurrentGuideStep(0);
+  }, []);
+  
+  const handleGuideSkip = useCallback(() => {
+    setIsGuideActive(false);
+    setIsFromOnboarding(false);
+    setCurrentGuideStep(0);
+  }, []);
+  
+  const handleGuideStepChange = useCallback((stepIndex: number) => {
+    setCurrentGuideStep(stepIndex);
+  }, []);
 
   // 动态生成 CopilotKit headers，包含 Bearer token
   const copilotHeaders = useMemo(() => {
@@ -89,8 +144,12 @@ const AppContent: React.FC = () => {
   // 使用useCallback避免onComplete函数重复创建 - 必须在所有条件渲染之前
   const handleOnboardingComplete = useCallback(() => {
     completeOnboarding();
-    // 导航到 Engagement Queue (Inspiration Accounts)
-    setActiveMenuItem('Inspiration Accounts');
+    // 导航到 Auto Engagement 页面
+    setActiveMenuItem('Auto Engagement');
+    // 标记来自onboarding，启动引导
+    setIsFromOnboarding(true);
+    setIsGuideActive(true);
+    setCurrentGuideStep(0);
     // 清除其他选择状态
     setSelectedCard(null);
     setSelectedAccount(null);
@@ -395,6 +454,18 @@ const AppContent: React.FC = () => {
         
         {/* 环境切换器 - 仅在开发环境显示 */}
         <EnvSwitcher />
+        
+        {/* 引导组件 - 只在从onboarding进入且在Auto Engagement页面时显示 */}
+        {isGuideActive && isFromOnboarding && activeMenuItem === 'Auto Engagement' && (
+          <GuideTour
+            steps={guideSteps}
+            isActive={isGuideActive}
+            currentStepIndex={currentGuideStep}
+            onComplete={handleGuideComplete}
+            onSkip={handleGuideSkip}
+            onStepChange={handleGuideStepChange}
+          />
+        )}
   
       </LayoutContext.Provider>
     </CopilotKit>

@@ -421,6 +421,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
       onClick={handleContainerFocus}
       onFocus={handleContainerFocus}
       onBlur={handleContainerBlur}
+      data-guide="ai-chat"
       className={`h-full flex flex-col bg-white border-l border-gray-200 transition-all duration-300 ease-in-out outline-none ${isMinimized ? 'w-12' :
         isExpanded ? 'w-[45vw] min-w-[600px] max-w-[900px]' :
           isFocused ? 'w-[30vw] min-w-[400px] max-w-[600px]' : 'w-[25vw] min-w-[320px] max-w-[500px]'
