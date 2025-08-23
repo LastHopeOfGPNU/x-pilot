@@ -1,6 +1,7 @@
 import { Card } from '../types/index';
 import { supabase } from './supabase';
 import { apiConfigService } from './apiConfigService';
+import { logger } from '../utils/logger';
 
 // 互动队列API响应类型（实际API返回的扁平化结构）
 interface EngagementItem {
@@ -145,7 +146,7 @@ class EngagementService {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Error in postReply:', error);
+      logger.error('Error in postReply:', error);
       throw error;
     }
   }
@@ -171,7 +172,7 @@ class EngagementService {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Error in rejectReply:', error);
+      logger.error('Error in rejectReply:', error);
       throw error;
     }
   }

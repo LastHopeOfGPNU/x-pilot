@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, MessageSquare, Repeat2, Clock, ToggleLeft, ToggleRight } from 'lucide-react';
 import { configService, ConfigItem as ApiConfigItem } from '../../lib/configService';
+import { logger } from '../../utils/logger';
 
 interface ConfigProps {
   onItemClick?: (item: ConfigItem) => void;
@@ -60,7 +61,7 @@ const Config: React.FC<ConfigProps> = ({ onItemClick, selectedItemId }) => {
       const transformedItems = response.data.map(transformApiConfigItem);
       setConfigItems(transformedItems);
     } catch (error) {
-      console.error('Failed to fetch config items:', error);
+      logger.error('Failed to fetch config items:', error);
       setError(error instanceof Error ? error.message : 'Failed to get configuration list');
     } finally {
       setLoading(false);
@@ -98,7 +99,7 @@ const Config: React.FC<ConfigProps> = ({ onItemClick, selectedItemId }) => {
     //       item.id === id ? { ...item, enabled: !enabled } : item
     //     )
     //   );
-    //   console.error('Failed to update configuration state:', error);
+    //   logger.error('Failed to update configuration state:', error);
     // }
   };
 

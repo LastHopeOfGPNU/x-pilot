@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logger } from '../utils/logger';
 
 export interface TwitterApiResponse<T = any> {
   data?: T;
@@ -54,7 +55,7 @@ export class TwitterApiProxy {
       });
 
       if (error) {
-        console.error('Twitter API 代理调用失败:', error);
+        logger.error('Twitter API 代理调用失败:', error);
         return {
           success: false,
           error: `API 调用失败: ${error.message}`
@@ -66,7 +67,7 @@ export class TwitterApiProxy {
         data: data
       };
     } catch (error) {
-      console.error('Twitter API 代理错误:', error);
+      logger.error('Twitter API 代理错误:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : '未知错误'

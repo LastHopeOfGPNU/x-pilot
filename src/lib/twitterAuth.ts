@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logger } from '../utils/logger';
 
 export interface TwitterAuthResult {
   user: any;
@@ -30,13 +31,13 @@ export class TwitterAuthService {
       });
 
       if (error) {
-        console.error('Supabase Twitter OAuth 错误:', error);
+        logger.error('Supabase Twitter OAuth 错误:', error);
         throw new Error(`Twitter 登录失败: ${error.message}`);
       }
 
       return { data, error: null };
     } catch (error) {
-      console.error('Twitter OAuth 登录失败:', error);
+      logger.error('Twitter OAuth 登录失败:', error);
       return { 
         data: null, 
         error: error instanceof Error ? error : new Error('Twitter 登录过程中发生未知错误') 
@@ -63,7 +64,7 @@ export class TwitterAuthService {
       // Supabase 会在 session 中存储 provider_token
       return session.provider_token || null;
     } catch (error) {
-      console.error('获取 Twitter token 错误:', error);
+      logger.error('获取 Twitter token 错误:', error);
       return null;
     }
   }
@@ -81,7 +82,7 @@ export class TwitterAuthService {
 
       return session.provider_refresh_token || null;
     } catch (error) {
-      console.error('获取 Twitter refresh token 错误:', error);
+      logger.error('获取 Twitter refresh token 错误:', error);
       return null;
     }
   }
@@ -99,7 +100,7 @@ export class TwitterAuthService {
 
       return data.session?.provider_token || null;
     } catch (error) {
-      console.error('刷新 Twitter token 错误:', error);
+      logger.error('刷新 Twitter token 错误:', error);
       return null;
     }
   }
@@ -126,7 +127,7 @@ export class TwitterAuthService {
     });
 
     if (error) {
-      console.error('Twitter API 代理调用失败:', error);
+      logger.error('Twitter API 代理调用失败:', error);
       throw new Error(`Twitter API 调用失败: ${error.message}`);
     }
 
@@ -160,7 +161,7 @@ export class TwitterAuthService {
         throw new Error(`登出失败: ${error.message}`);
       }
     } catch (error) {
-      console.error('登出错误:', error);
+      logger.error('登出错误:', error);
       throw error;
     }
   }

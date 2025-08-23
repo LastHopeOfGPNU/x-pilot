@@ -3,6 +3,7 @@ import { Settings, Globe, Server, RotateCcw, Terminal, MessageSquare } from 'luc
 import { apiConfigService } from '../../lib/apiConfigService';
 import { devConfigService } from '../../lib/devConfigService';
 import { supabase } from '../../lib/supabase';
+import { logger } from '../../utils/logger';
 
 interface EnvSwitcherProps {
   className?: string;
@@ -189,11 +190,11 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
         // 刷新页面以重新开始引导流程
         window.location.reload();
       } else {
-        console.error('重置引导流程失败:', response.statusText);
+        logger.error('重置引导流程失败:', response.statusText);
         alert('重置引导流程失败，请稍后重试');
       }
     } catch (error) {
-      console.error('重置引导流程出错:', error);
+      logger.error('重置引导流程出错:', error);
       alert('重置引导流程出错，请稍后重试');
     } finally {
       setIsResetting(false);

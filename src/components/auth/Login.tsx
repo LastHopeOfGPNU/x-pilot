@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, CheckCircle, AlertCircle, Clock } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import GoogleLoginButton from './GoogleLoginButton'
+import { logger } from '../../utils/logger'
 
 interface LoginProps {
   onClose?: () => void
@@ -51,7 +52,7 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
         const { error: signUpError } = await signUp(email, password)
         
         if (signUpError) {
-          console.error('Registration error:', signUpError)
+          logger.error('Registration error:', signUpError)
           if (signUpError.message.includes('email_address_invalid')) {
             setError('邮箱地址格式无效，请使用有效的邮箱地址')
           } else if (signUpError.message.includes('User already registered')) {
@@ -69,7 +70,7 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
         const { error } = await signIn(email, password)
         
         if (error) {
-          console.error('Login error:', error)
+          logger.error('Login error:', error)
           if (error.message.includes('email_not_confirmed')) {
             setError('请先验证您的邮箱地址。检查您的邮箱并点击验证链接。')
           } else if (error.message.includes('Invalid login credentials')) {
