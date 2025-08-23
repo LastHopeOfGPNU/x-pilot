@@ -209,13 +209,13 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
   const renderOverview = () => (
     <div className="space-y-6">
       {/* Profile Header */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="flex items-start space-x-6">
           <div className="relative">
             <img
               src={profileData.avatar}
               alt="Profile"
-              className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+              className="object-cover w-24 h-24 rounded-full border-4 border-white shadow-lg"
             />
           </div>
           
@@ -233,7 +233,7 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
             
             <div className="flex items-center mt-4 text-sm text-gray-600">
               <div className="flex items-center">
-                <Calendar className="w-4 h-4 mr-1" />
+                <Calendar className="mr-1 w-4 h-4" />
                 Joined {profileData.joinDate}
               </div>
             </div>
@@ -243,12 +243,12 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
+        <div className="p-6 text-center bg-white rounded-lg border border-gray-200 shadow-sm">
           <div className="text-2xl font-bold text-blue-600">1,247</div>
           <div className="text-sm text-gray-600">Total Replies</div>
           <div className="mt-2 text-xs text-green-600">+12% this week</div>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
+        <div className="p-6 text-center bg-white rounded-lg border border-gray-200 shadow-sm">
           <div className="text-2xl font-bold text-green-600">8.5%</div>
           <div className="text-sm text-gray-600">Engagement Total</div>
           <div className="mt-2 text-xs text-green-600">+2.3% this month</div>
@@ -256,24 +256,24 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+      <div className="p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">Recent Activity</h3>
         <div className="space-y-4">
-          <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
+          <div className="flex items-center p-3 space-x-3 bg-blue-50 rounded-lg">
             <MessageSquare className="w-5 h-5 text-blue-600" />
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900">Auto-replied to @techcrunch</p>
               <p className="text-xs text-gray-500">2 minutes ago</p>
             </div>
           </div>
-          <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
+          <div className="flex items-center p-3 space-x-3 bg-green-50 rounded-lg">
             <Users className="w-5 h-5 text-green-600" />
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900">Gained 15 new followers</p>
               <p className="text-xs text-gray-500">1 hour ago</p>
             </div>
           </div>
-          <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
+          <div className="flex items-center p-3 space-x-3 bg-blue-50 rounded-lg">
           <BarChart3 className="w-5 h-5 text-[#4792E6]" />
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900">Generated weekly analytics report</p>
@@ -284,8 +284,8 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
       </div>
 
       {/* Account Info */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
+      <div className="p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">Account Information</h3>
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-gray-600">Sign-in Provider</span>
@@ -297,7 +297,7 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Account Status</span>
-            <span className="text-green-600 font-medium">Active</span>
+            <span className="font-medium text-green-600">Active</span>
           </div>
         </div>
       </div>
@@ -307,10 +307,10 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
   const renderConnect = () => (
     <div className="space-y-6">
       {/* X (Twitter) Connection */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="flex justify-between items-center mb-4">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center">
+            <div className="flex justify-center items-center w-10 h-10 bg-black rounded-lg">
               <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
               </svg>
@@ -320,17 +320,17 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
               <p className="text-sm text-gray-500">
                 {connectLoading ? (
                   <span className="flex items-center">
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                     Checking connection...
                   </span>
                 ) : twitterStatus ? (
                   twitterStatus.is_authorized ? (
                     twitterStatus.is_expired ? (
-                      <span className="text-amber-600 font-medium">
+                      <span className="font-medium text-amber-600">
                         Token Expired - @{twitterConnection?.platform_username}
                       </span>
                     ) : (
-                      <span className="text-green-600 font-medium">
+                      <span className="font-medium text-green-600">
                         Connected @{twitterConnection?.platform_username}
                       </span>
                     )
@@ -357,24 +357,24 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
         </div>
 
         {connectLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <div className="flex justify-center items-center py-8">
+            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
           </div>
         ) : twitterStatus?.is_authorized ? (
           <div className="space-y-4">
             {/* 过期状态警告 */}
             {twitterStatus.is_expired && (
-              <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
-                <div className="flex items-center space-x-2 mb-2">
+              <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                <div className="flex items-center mb-2 space-x-2">
                   <AlertCircle className="w-5 h-5 text-amber-600" />
                   <h4 className="font-medium text-amber-900">Token Expired</h4>
                 </div>
-                <p className="text-sm text-amber-700 mb-3">
+                <p className="mb-3 text-sm text-amber-700">
                   Your X (Twitter) connection token has expired. Please reconnect to continue using X features.
                 </p>
                 <button
                   onClick={handleConnectTwitter}
-                  className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm"
+                  className="px-4 py-2 text-sm text-white bg-amber-600 rounded-lg transition-colors hover:bg-amber-700"
                 >
                   Reconnect X
                 </button>
@@ -407,7 +407,7 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
               {!twitterStatus.is_expired && (
                 <button
                   onClick={handleDisconnectTwitter}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  className="px-4 py-2 text-white bg-red-600 rounded-lg transition-colors hover:bg-red-700"
                 >
                   Disconnect X
                 </button>
@@ -416,9 +416,9 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">Connection Benefits</h4>
-              <ul className="text-sm text-blue-700 space-y-1">
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h4 className="mb-2 font-medium text-blue-900">Connection Benefits</h4>
+              <ul className="space-y-1 text-sm text-blue-700">
                 <li>• Direct access to your X account via API</li>
                 <li>• Secure OAuth 2.0 authentication</li>
                 <li>• Support for reading and posting tweets</li>
@@ -426,9 +426,9 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
               </ul>
             </div>
             
-            <div className="bg-amber-50 p-4 rounded-lg">
-              <h4 className="font-medium text-amber-900 mb-2">Connection Requirements</h4>
-              <ul className="text-sm text-amber-700 space-y-1">
+            <div className="p-4 bg-amber-50 rounded-lg">
+              <h4 className="mb-2 font-medium text-amber-900">Connection Requirements</h4>
+              <ul className="space-y-1 text-sm text-amber-700">
                 <li>• Valid X account</li>
                 <li>• Allow third-party app access</li>
                 <li>• Stable internet connection</li>
@@ -436,20 +436,10 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
               </ul>
             </div>
 
-            <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-              <div className="flex items-center space-x-2 mb-2">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-                <h4 className="font-medium text-red-900">Configuration Required</h4>
-              </div>
-              <p className="text-sm text-red-700 mb-3">
-                Twitter API credentials are not configured. Please contact support for assistance with setup.
-              </p>
-            </div>
-            
             <button
               onClick={handleConnectTwitter}
               disabled={connectLoading}
-              className="w-full bg-black text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              className="flex justify-center items-center px-4 py-3 space-x-2 w-full font-medium text-white bg-black rounded-lg transition-colors hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {connectLoading && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>{connectLoading ? 'Connecting...' : 'Connect X'}</span>
