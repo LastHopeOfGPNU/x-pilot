@@ -606,24 +606,37 @@ const ResultsArea: React.FC<ResultsAreaProps> = ({ selectedCard, selectedAccount
       <div className="h-full overflow-y-auto">
         {/* Card Header */}
         <div className="bg-gradient-to-r from-blue-500 to-[#4792E6] p-6 text-white">
-          <div className="flex items-start space-x-4">
-            <div className="flex justify-center items-center w-16 h-16 bg-white/20 rounded-full">
-              {card.avatar ? (
-                <img src={card.avatar} alt={card.author} className="w-full h-full rounded-full object-cover" />
-              ) : (
-                <User size={24} className="text-white" />
-              )}
+          <div className="flex items-start justify-between">
+            <div className="flex items-start space-x-4">
+              <div className="flex justify-center items-center w-16 h-16 bg-white/20 rounded-full">
+                {card.avatar ? (
+                  <img src={card.avatar} alt={card.author} className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  <User size={24} className="text-white" />
+                )}
+              </div>
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold">
+                  {card.author || 'Card Details'}
+                </h1>
+                {card.handle && (
+                  <div className="text-sm text-blue-100 mt-1">
+                    {card.handle}
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold">
-                {card.author || 'Card Details'}
-              </h1>
-              {card.handle && (
-                <div className="text-sm text-blue-100 mt-1">
-                  {card.handle}
-                </div>
-              )}
-            </div>
+            {card.username && card.tweetId && (
+              <button
+                onClick={() => {
+                  window.open(`https://x.com/${card.username}/status/${card.tweetId}`, '_blank');
+                }}
+                className="p-2 text-white/80 transition-colors hover:text-white hover:bg-white/20 rounded-full"
+                title="在X上查看原推"
+              >
+                <ExternalLink size={20} />
+              </button>
+            )}
           </div>
         </div>
 

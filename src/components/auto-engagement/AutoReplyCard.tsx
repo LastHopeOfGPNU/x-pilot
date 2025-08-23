@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Heart, Repeat2, MessageSquare, X, Send, Eye } from 'lucide-react';
+import { Heart, Repeat2, MessageSquare, X, Send, Eye, ExternalLink } from 'lucide-react';
 import { Card } from '../../types';
 import ConfirmModal from '../common/ConfirmModal';
 import { logger } from '../../utils/logger';
@@ -89,8 +89,20 @@ const AutoReplyCard: React.FC<AutoReplyCardProps> = ({
             />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="mb-1">
+            <div className="flex items-center justify-between mb-1">
               <span className="font-semibold text-gray-900">{card.author || 'Unknown User'}</span>
+              {card.username && card.tweetId && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(`https://x.com/${card.username}/status/${card.tweetId}`, '_blank');
+                  }}
+                  className="p-1 text-gray-400 transition-colors hover:text-blue-500 hover:bg-blue-50 rounded-full"
+                  title="在X上查看原推"
+                >
+                  <ExternalLink size={16} />
+                </button>
+              )}
             </div>
             <div className="flex items-center mb-2 space-x-2">
               <span className="text-sm text-gray-500">{card.handle || '@unknown'}</span>

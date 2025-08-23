@@ -202,7 +202,9 @@ class EngagementService {
       replyActions: {
         reject: true,
         postReply: true
-      }
+      },
+      tweetId: item.tweet_id,
+      username: item.tweet_author_username
     };
   }
 

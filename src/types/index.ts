@@ -76,6 +76,8 @@ export interface Card {
     reject: boolean;
     postReply: boolean;
   };
+  tweetId?: string;
+  username?: string;
 }
 
 // Post interface for PostThreadQueue
