@@ -115,8 +115,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
           const status = await twitterService.getConnectionStatus();
           setTwitterStatus(status);
           
-          // Also get connection details if connected
-          if (status.is_twitter_connected) {
+          // Also get connection details if has records and is active
+          if (status.has_records && status.is_active) {
             const connection = await twitterService.getUserConnection();
             setTwitterConnection(connection);
           } else {
@@ -129,8 +129,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
             console.log('Mock mode - simulating Twitter connection status');
             setTwitterConnection(null); // Default to not connected for testing
             setTwitterStatus({
-              is_twitter_connected: false,
-              is_authorized: false,
+              has_records: false,
+              is_active: false,
               is_expired: false
             });
           }
@@ -317,6 +317,68 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
     }
   };
 
+  // 重连函数 - 数据库覆盖刷新
+  const handleReconnectTwitter = async () => {
+    try {
+      setActionLoading(true);
+      setError(null);
+      
+      // 重连时直接启动OAuth流程，不检查现有token（数据库覆盖刷新）
+      const authUrl = await twitterService.getAuthUrl();
+      const popup = window.open(authUrl, '_blank', 'width=600,height=600');
+      
+      // 监听来自弹出窗口的消息
+      const handleMessage = (event: MessageEvent) => {
+        // 验证消息来源
+        if (event.origin !== window.location.origin) {
+          return;
+        }
+        
+        if (event.data.type === 'TWITTER_AUTH_SUCCESS') {
+          // 授权成功，更新连接状态
+          setTwitterConnection(event.data.data);
+          setActionLoading(false);
+          setError(null);
+          window.removeEventListener('message', handleMessage);
+          console.log('Twitter reconnection successful via popup - database overwrite refresh');
+        } else if (event.data.type === 'TWITTER_AUTH_ERROR') {
+          // 授权失败
+          setError(event.data.error || 'Twitter reconnection failed');
+          setActionLoading(false);
+          window.removeEventListener('message', handleMessage);
+          console.error('Twitter reconnection failed:', event.data.error);
+        }
+      };
+      
+      window.addEventListener('message', handleMessage);
+      
+      // 检查弹出窗口是否被关闭（用户手动关闭）
+      const checkClosed = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(checkClosed);
+          setActionLoading(false);
+          window.removeEventListener('message', handleMessage);
+          // 不设置错误，因为用户可能是主动取消的
+        }
+      }, 1000);
+      
+      // 5分钟后停止监听（超时保护）
+      setTimeout(() => {
+        clearInterval(checkClosed);
+        setActionLoading(false);
+        window.removeEventListener('message', handleMessage);
+        if (!popup?.closed) {
+          setError('Reconnection timeout. Please try again.');
+        }
+      }, 300000);
+      
+    } catch (error) {
+      console.error('Failed to reconnect Twitter:', error);
+      setError('Failed to reconnect Twitter account');
+      setActionLoading(false);
+    }
+  };
+
   const handleDisconnectTwitter = () => {
     setShowDisconnectModal(true);
   };
@@ -362,8 +424,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                 console.log('Mock mode - simulating Twitter connection status');
                 setTwitterConnection(null); // Default to not connected for testing
                 setTwitterStatus({
-                  is_twitter_connected: false,
-                  is_authorized: false,
+                  has_records: false,
+                  is_active: false,
                   is_expired: false
                 });
               }
@@ -593,12 +655,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                   </div>
                   <div className={`px-3 py-1 rounded-full text-sm font-medium ${
                     connectLoading ? 'bg-blue-100 text-blue-800' :
-                    twitterStatus?.is_authorized && twitterStatus?.is_expired ? 'bg-amber-100 text-amber-800' :
-                    twitterStatus?.is_twitter_connected ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    !twitterStatus?.has_records ? 'bg-gray-100 text-gray-800' :
+                    !twitterStatus?.is_active ? 'bg-red-100 text-red-800' :
+                    twitterStatus?.is_expired ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
                   }`}>
                     {connectLoading ? 'Checking...' : 
-                     twitterStatus?.is_authorized && twitterStatus?.is_expired ? 'Token Expired' :
-                     twitterStatus?.is_twitter_connected ? 'Connected' : 'Disconnected'}
+                     !twitterStatus?.has_records ? 'Disconnected' :
+                     !twitterStatus?.is_active ? 'Manually Disabled' :
+                     twitterStatus?.is_expired ? 'Token Expired' : 'Connected'}
                   </div>
                 </div>
 
@@ -606,30 +670,51 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                   <div className="flex justify-center items-center py-8">
                     <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
                   </div>
-                ) : twitterStatus?.is_authorized ? (
-                  <div className="space-y-4">
-                    {twitterStatus.is_expired && (
-                      <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                ) : twitterStatus?.has_records ? (
+                  !twitterStatus.is_active ? (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-red-50 rounded-lg border border-red-200">
                         <div className="flex items-center mb-2 space-x-2">
-                          <AlertCircle className="w-5 h-5 text-amber-600" />
-                          <h4 className="font-medium text-amber-900">Token Expired</h4>
+                          <AlertCircle className="w-5 h-5 text-red-600" />
+                          <h4 className="font-medium text-red-900">Connection Manually Disabled</h4>
                         </div>
-                        <p className="mb-3 text-sm text-amber-700">Your X connection token has expired. Please reconnect to continue using X features.</p>
-                        <button
-                          onClick={handleConnectTwitter}
-                          className="px-4 py-2 text-white bg-amber-600 rounded-lg transition-colors hover:bg-amber-700"
-                        >
-                          Reconnect X
-                        </button>
+                        <p className="text-sm text-red-700">
+                          User manually canceled connection or abnormal interruption, need to reconnect.
+                        </p>
                       </div>
-                    )}
+                      <button
+                        onClick={handleReconnectTwitter}
+                        disabled={actionLoading}
+                        className="flex justify-center items-center px-4 py-3 space-x-2 w-full font-medium text-white bg-black rounded-lg transition-colors hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                        <span>{actionLoading ? 'Reconnecting...' : 'Reconnect X'}</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {twitterStatus.is_expired && (
+                        <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                          <div className="flex items-center mb-2 space-x-2">
+                            <AlertCircle className="w-5 h-5 text-amber-600" />
+                            <h4 className="font-medium text-amber-900">Token Expired</h4>
+                          </div>
+                          <p className="mb-3 text-sm text-amber-700">Your X connection token has expired. Please reconnect to continue using X features.</p>
+                          <button
+                            onClick={handleReconnectTwitter}
+                            className="px-4 py-2 text-white bg-amber-600 rounded-lg transition-colors hover:bg-amber-700"
+                          >
+                            Reconnect X
+                          </button>
+                        </div>
+                      )}
                     
-                    {twitterConnection && (
+                    {(twitterStatus.platform_username || twitterConnection) && (
                       <div className="grid grid-cols-2 gap-4">
                         <div className={`p-4 rounded-lg ${twitterStatus.is_expired ? 'bg-amber-50' : 'bg-blue-50'}`}>
                           <h4 className={`font-medium mb-2 ${twitterStatus.is_expired ? 'text-amber-900' : 'text-blue-900'}`}>Account Information</h4>
-                          <p className={`text-sm ${twitterStatus.is_expired ? 'text-amber-700' : 'text-blue-700'}`}>Username: @{twitterConnection.platform_username}</p>
-                          <p className={`text-sm ${twitterStatus.is_expired ? 'text-amber-700' : 'text-blue-700'}`}>Connected: {new Date(twitterConnection.connected_at).toLocaleDateString()}</p>
+                          <p className={`text-sm ${twitterStatus.is_expired ? 'text-amber-700' : 'text-blue-700'}`}>Username: @{twitterStatus.platform_username || (twitterConnection && twitterConnection.platform_username)}</p>
+                        <p className={`text-sm ${twitterStatus.is_expired ? 'text-amber-700' : 'text-blue-700'}`}>Connected: {new Date(twitterStatus.connected_at || (twitterConnection && twitterConnection.connected_at)).toLocaleDateString()}</p>
                         </div>
                         <div className={`p-4 rounded-lg ${twitterStatus.is_expired ? 'bg-red-50' : 'bg-green-50'}`}>
                           <h4 className={`font-medium mb-2 ${twitterStatus.is_expired ? 'text-red-900' : 'text-green-900'}`}>API Access</h4>
@@ -643,17 +728,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
                       </div>
                     )}
                     
-                    {!twitterStatus.is_expired && (
-                      <div className="flex space-x-3">
-                        <button
-                          onClick={handleDisconnectTwitter}
-                          className="px-4 py-2 text-white bg-red-600 rounded-lg transition-colors hover:bg-red-700"
-                        >
-                          Disconnect X
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                      {!twitterStatus.is_expired && (
+                        <div className="flex space-x-3">
+                          <button
+                            onClick={handleDisconnectTwitter}
+                            className="px-4 py-2 text-white bg-red-600 rounded-lg transition-colors hover:bg-red-700"
+                          >
+                            Disconnect X
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
                 ) : (
                   <div className="space-y-4">
                     <div className="p-4 bg-blue-50 rounded-lg">

@@ -3,12 +3,11 @@ import { User } from '@supabase/supabase-js';
 
 // Twitter连接状态响应接口
 export interface TwitterConnectionStatus {
-  is_twitter_connected: boolean;
-  is_authorized: boolean;
+  has_records: boolean;
+  is_active: boolean;
   is_expired: boolean;
-  connection_details: TwitterConnection | null;
-  total_connections: number;
-  debug_info?: any;
+  connected_at?: string;
+  platform_username?: string;
 }
 
 // Twitter连接信息接口

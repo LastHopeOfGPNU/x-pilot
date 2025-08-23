@@ -5,6 +5,75 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-copilotcloud-public-api-key',
 };
 
+interface TwitterTokenResponse {
+  token_type: string
+  expires_in: number
+  access_token: string
+  scope: string
+  refresh_token?: string
+}
+
+// 刷新Twitter token的函数
+async function refreshTwitterToken(refreshToken: string, userId: string, supabase: any): Promise<{ success: boolean; error?: string }> {
+  try {
+    // 获取Twitter API凭据
+    const clientId = Deno.env.get('TWITTER_CLIENT_ID');
+    const clientSecret = Deno.env.get('TWITTER_CLIENT_SECRET');
+
+    if (!clientId || !clientSecret) {
+      return { success: false, error: 'Twitter API credentials not configured' };
+    }
+
+    // 准备刷新token请求
+    const refreshParams = new URLSearchParams({
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+      client_id: clientId,
+    });
+
+    // 请求新的访问令牌
+    const tokenResponse = await fetch('https://api.twitter.com/2/oauth2/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+      },
+      body: refreshParams.toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.text();
+      console.error('Twitter token refresh failed:', errorData);
+      return { success: false, error: `Token refresh failed: ${errorData}` };
+    }
+
+    const tokenData: TwitterTokenResponse = await tokenResponse.json();
+
+    // 更新数据库中的连接记录
+    const { error: updateError } = await supabase
+      .from('user_social_connections')
+      .update({
+        access_token: tokenData.access_token,
+        refresh_token: tokenData.refresh_token || refreshToken,
+        expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
+      .eq('platform', 'twitter');
+
+    if (updateError) {
+      console.error('Failed to update connection record:', updateError);
+      return { success: false, error: `Failed to update connection record: ${updateError.message}` };
+    }
+
+    console.log('Twitter token refreshed successfully for user:', userId);
+    return { success: true };
+  } catch (error) {
+    console.error('Error refreshing Twitter token:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -17,8 +86,9 @@ Deno.serve(async (req) => {
   
   if (!supabaseUrl || !supabaseServiceKey) {
     return new Response(JSON.stringify({
-      error: 'Supabase configuration missing',
-      is_twitter_connected: false
+      has_records: false,
+      is_active: false,
+      is_expired: false
     }), {
       status: 500,
       headers: {
@@ -33,8 +103,9 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return new Response(JSON.stringify({
-      error: 'No valid bearer token provided',
-      is_twitter_connected: false
+      has_records: false,
+      is_active: false,
+      is_expired: false
     }), {
       status: 401,
       headers: {
@@ -49,8 +120,9 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
       return new Response(JSON.stringify({
-        error: 'Invalid authentication token',
-        is_twitter_connected: false
+        has_records: false,
+        is_active: false,
+        is_expired: false
       }), {
         status: 401,
         headers: {
@@ -76,11 +148,9 @@ Deno.serve(async (req) => {
       // 如果是 PGRST116 错误（表不存在）或 PGRST106 错误（没有记录），返回未授权状态
       if (error.code === 'PGRST116') {
         return new Response(JSON.stringify({
-          is_twitter_connected: false,
-          is_authorized: false,
-          is_expired: false,
-          connection_details: null,
-          debug_info: 'Table does not exist'
+          has_records: false,
+          is_active: false,
+          is_expired: false
         }), {
           headers: {
             'Content-Type': 'application/json',
@@ -92,11 +162,9 @@ Deno.serve(async (req) => {
       // PGRST106 表示没有找到记录，说明用户未授权
       if (error.code === 'PGRST106') {
         return new Response(JSON.stringify({
-          is_twitter_connected: false,
-          is_authorized: false,
-          is_expired: false,
-          connection_details: null,
-          debug_info: 'No connection record found - user not authorized'
+          has_records: false,
+          is_active: false,
+          is_expired: false
         }), {
           headers: {
             'Content-Type': 'application/json',
@@ -106,12 +174,9 @@ Deno.serve(async (req) => {
       }
       
       return new Response(JSON.stringify({
-        error: error.message,
-        error_code: error.code,
-        is_twitter_connected: false,
-        is_authorized: false,
-        is_expired: false,
-        debug_info: 'Database query error'
+        has_records: false,
+        is_active: false,
+        is_expired: false
       }), {
         status: 500,
         headers: {
@@ -122,7 +187,7 @@ Deno.serve(async (req) => {
     }
     
     // 处理查询结果 - data 现在是单个对象
-    const connection = data;
+    let connection = data;
     let isAuthorized = true; // 有记录说明已授权
     let isExpired = false;
     let isConnected = false;
@@ -133,8 +198,8 @@ Deno.serve(async (req) => {
     if (connection.is_active === false) {
       // 情况3: is_active为false，可能是用户手动断链或其他异常
       isConnected = false;
-      isExpired = true; // 返回已过期，需要用户手动建链
-      console.log('Debug - Connection is inactive, user needs to manually reconnect');
+      isExpired = false; // 不是过期，而是手动禁用
+      console.log('Debug - Connection is inactive, user manually disabled');
     } else if (connection.expires_at) {
       // 情况4: 检查token是否过期
       const expirationTime = new Date(connection.expires_at);
@@ -146,11 +211,49 @@ Deno.serve(async (req) => {
         isExpired: currentTime >= expirationTime
       });
       
-      if (currentTime >= expirationTime) {
-        // Token已过期，显示已过期，由系统自动刷新
+      if (currentTime >= expirationTime && connection.is_active === true && connection.refresh_token) {
+        // Token已过期，但is_active为true且有refresh_token，自动刷新token
+        console.log('Debug - Token expired but connection is active, attempting auto-refresh');
+        
+        try {
+          // 调用refresh token逻辑
+          const refreshResult = await refreshTwitterToken(connection.refresh_token, user.id, supabase);
+          
+          if (refreshResult.success) {
+            // 刷新成功，重新查询连接状态
+            const { data: refreshedConnection, error: refreshQueryError } = await supabase
+              .from('user_social_connections')
+              .select('*')
+              .eq('user_id', user.id)
+              .eq('platform', 'twitter')
+              .single();
+            
+            if (!refreshQueryError && refreshedConnection) {
+              // 使用刷新后的连接信息
+              connection = refreshedConnection;
+              isConnected = true;
+              isExpired = false;
+              console.log('Debug - Token refreshed successfully, connection is now active');
+            } else {
+              isExpired = true;
+              isConnected = false;
+              console.log('Debug - Failed to query refreshed connection');
+            }
+          } else {
+            isExpired = true;
+            isConnected = false;
+            console.log('Debug - Token refresh failed:', refreshResult.error);
+          }
+        } catch (refreshError) {
+          console.error('Debug - Token refresh error:', refreshError);
+          isExpired = true;
+          isConnected = false;
+        }
+      } else if (currentTime >= expirationTime) {
+        // Token已过期，但无法自动刷新
         isExpired = true;
         isConnected = false;
-        console.log('Debug - Token expired, system should auto-refresh');
+        console.log('Debug - Token expired, cannot auto-refresh');
       } else {
         // Token有效且活跃
         isConnected = true;
@@ -163,19 +266,11 @@ Deno.serve(async (req) => {
     }
     
     const result = {
-      is_twitter_connected: isConnected,
-      is_authorized: isAuthorized,
+      has_records: isAuthorized,
+      is_active: connection.is_active,
       is_expired: isExpired,
-      connection_details: connection,
-      debug_info: {
-        user_id: user.id,
-        is_connected: isConnected,
-        is_authorized: isAuthorized,
-        is_expired: isExpired,
-        is_active: connection.is_active,
-        expires_at: connection.expires_at,
-        current_time: new Date().toISOString()
-      }
+      connected_at: connection.connected_at,
+      platform_username: connection.platform_username
     };
     
     console.log('Debug - Final result:', result);
@@ -188,10 +283,8 @@ Deno.serve(async (req) => {
     });
   } catch (catchError) {
     return new Response(JSON.stringify({
-      error: catchError instanceof Error ? catchError.message : 'Unknown error occurred',
-      error_type: 'unexpected_error',
-      is_twitter_connected: false,
-      is_authorized: false,
+      has_records: false,
+      is_active: false,
       is_expired: false
     }), {
       status: 500,

@@ -202,7 +202,7 @@ const AppContent: React.FC = () => {
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-blue-50">
         <div className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 rounded-full border-4 border-blue-200 animate-spin border-t-[#4792E6]"></div>
-          <p className="text-gray-600">正在检查设置状态...</p>
+          <p className="text-gray-600">Checking...</p>
         </div>
       </div>
     );
