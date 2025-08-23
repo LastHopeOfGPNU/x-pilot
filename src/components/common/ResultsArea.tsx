@@ -929,15 +929,7 @@ const ResultsArea: React.FC<ResultsAreaProps> = ({ selectedCard, selectedAccount
               </>
             )}
 
-            {/* Content */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                {selectedConfigItem.type === 'reply' ? 'Reply Content' : 'Repost Content'}
-              </h2>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-gray-900 leading-relaxed">{selectedConfigItem.content}</p>
-              </div>
-            </div>
+
 
 
 

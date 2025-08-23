@@ -124,10 +124,10 @@ const Config: React.FC<ConfigProps> = ({ onItemClick, selectedItemId }) => {
   };
 
   return (
-    <div className="flex flex-col w-2/3 h-full bg-white rounded-lg border border-gray-200 shadow-sm">
+    <div className="flex flex-col h-full bg-gray-50">
       {/* Header */}
-      <div className="flex-shrink-0 p-6 border-b border-gray-200">
-        <h2 className="mb-4 text-xl font-semibold text-gray-900">Properties</h2>
+      <div className="flex-shrink-0 p-6 bg-white border-b border-gray-200">
+        <h2 className="mb-4 text-2xl font-bold text-gray-900">Properties</h2>
         
         {/* Tab Navigation - Only Reply and Repost */}
         <div className="flex p-1 mb-4 space-x-1 bg-gray-100 rounded-lg">
@@ -168,7 +168,7 @@ const Config: React.FC<ConfigProps> = ({ onItemClick, selectedItemId }) => {
       </div>
       
       {/* Content */}
-      <div className="overflow-y-auto flex-1 p-6 space-y-4">
+      <div className="overflow-y-auto flex-1 p-6 space-y-4 bg-gray-50">
         {error ? (
           <div className="py-8 text-center">
             <div className="mb-4 text-red-500">

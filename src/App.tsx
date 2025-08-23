@@ -398,6 +398,7 @@ const AppContent: React.FC = () => {
             {/* Activity Queue / Config / Profile / Dashboard / Marketing Strategy */}
             <div className={`${
               showDashboard || showProfile ? 'w-full' : 
+              showProperties ? 'w-1/3' :
               canShowBothPanels ? 'w-auto' : 'flex-1'
             } min-w-[500px] overflow-hidden`}>
               {showDashboard ? (
@@ -435,7 +436,7 @@ const AppContent: React.FC = () => {
             
             {/* Results Area - only show when not Dashboard and not Profile and when there's enough space */}
             <div className={`overflow-hidden flex-1 min-w-0 ${
-              !showDashboard && !showProfile && canShowBothPanels ? 'block' : 'hidden'
+              !showDashboard && !showProfile && (canShowBothPanels || showProperties) ? 'block' : 'hidden'
             }`}>
               <ResultsArea 
                 selectedCard={selectedCard} 
