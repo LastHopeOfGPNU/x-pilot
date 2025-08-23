@@ -29,6 +29,47 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
   const [disconnectLoading, setDisconnectLoading] = useState(false);
   const { user } = useAuth();
   
+  // Check Twitter connection status function
+  const checkTwitterConnection = async () => {
+    if (currentStep === 'CONNECT') {
+      const mockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
+      
+      if (!user && !mockMode) {
+        console.log('No user and not in mock mode - skipping Twitter connection check');
+        return;
+      }
+
+      setConnectLoading(true);
+      try {
+        // Always try real API request first
+        const status = await twitterService.getConnectionStatus();
+        setTwitterStatus(status);
+        
+        // Also get connection details if connected
+        if (status.is_twitter_connected) {
+          const connection = await twitterService.getUserConnection();
+          setTwitterConnection(connection);
+        } else {
+          setTwitterConnection(null);
+        }
+      } catch (error) {
+        console.error('Error checking Twitter connection:', error);
+        // In mock mode, simulate connection status
+        if (mockMode) {
+          console.log('Mock mode - simulating Twitter connection status');
+          setTwitterConnection(null); // Default to not connected for testing
+          setTwitterStatus({
+            has_records: false,
+            is_active: false,
+            is_expired: false
+          });
+        }
+      } finally {
+        setConnectLoading(false);
+      }
+    }
+  };
+  
   // Fetch inspiration accounts from API or use mock data
   const fetchInspirationAccounts = async () => {
     try {
@@ -279,6 +320,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
           setError(null);
           window.removeEventListener('message', handleMessage);
           console.log('Twitter authorization successful via popup');
+          
+          // 重新检查连接状态以确保界面同步
+          checkTwitterConnection();
         } else if (event.data.type === 'TWITTER_AUTH_ERROR') {
           // 授权失败
           setError(event.data.error || 'Twitter authorization failed');
@@ -341,6 +385,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
           setError(null);
           window.removeEventListener('message', handleMessage);
           console.log('Twitter reconnection successful via popup - database overwrite refresh');
+          
+          // 重新检查连接状态以确保界面同步
+          checkTwitterConnection();
         } else if (event.data.type === 'TWITTER_AUTH_ERROR') {
           // 授权失败
           setError(event.data.error || 'Twitter reconnection failed');
@@ -395,46 +442,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
         setTwitterStatus(null);
         
         // 重新检查连接状态以确保界面同步
-        const checkTwitterConnection = async () => {
-          if (currentStep === 'CONNECT') {
-            const mockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
-            
-            if (!user && !mockMode) {
-              console.log('No user and not in mock mode - skipping Twitter connection check');
-              return;
-            }
-
-            setConnectLoading(true);
-            try {
-              // Always try real API request first
-              const status = await twitterService.getConnectionStatus();
-              setTwitterStatus(status);
-              
-              // Also get connection details if connected
-              if (status.is_twitter_connected) {
-                const connection = await twitterService.getUserConnection();
-                setTwitterConnection(connection);
-              } else {
-                setTwitterConnection(null);
-              }
-            } catch (error) {
-              console.error('Error checking Twitter connection:', error);
-              // In mock mode, simulate connection status
-              if (mockMode) {
-                console.log('Mock mode - simulating Twitter connection status');
-                setTwitterConnection(null); // Default to not connected for testing
-                setTwitterStatus({
-                  has_records: false,
-                  is_active: false,
-                  is_expired: false
-                });
-              }
-            } finally {
-              setConnectLoading(false);
-            }
-          }
-        };
-        
         await checkTwitterConnection();
         console.log('Twitter connection successfully disconnected');
         setShowDisconnectModal(false);
