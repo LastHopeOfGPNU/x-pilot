@@ -423,6 +423,14 @@ const AppContent: React.FC = () => {
                   onPostClick={handlePostClick}
                   selectedPostId={selectedPostId || undefined}
                 />
+              ) : showAutoEngagement ? (
+                <EngagementQueue 
+                  showInspirationAccounts={showInspirationAccounts} 
+                  onCardClick={handleCardClick}
+                  onAccountClick={handleAccountClick}
+                  selectedCardId={selectedCard?.id}
+                  selectedAccountId={selectedAccount?.id}
+                />
               ) : (
                 <EngagementQueue 
                   showInspirationAccounts={showInspirationAccounts} 
