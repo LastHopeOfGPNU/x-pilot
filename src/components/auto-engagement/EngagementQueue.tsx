@@ -38,9 +38,25 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
 }) => {
   const [inspirationAccounts, setInspirationAccounts] = useState<InspirationAccount[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>(showInspirationAccounts ? 'starred' : 'autoReply');
-  const [searchQuery, setSearchQuery] = useState('');
+  // 为每个标签页独立的搜索状态，从localStorage恢复
+  const [starredSearchQuery, setStarredSearchQuery] = useState(() => {
+    try {
+      return localStorage.getItem('inspiration-accounts-starred-search') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [outreachSearchQuery, setOutreachSearchQuery] = useState(() => {
+    try {
+      return localStorage.getItem('inspiration-accounts-outreach-search') || '';
+    } catch {
+      return '';
+    }
+  });
   const [searchResults, setSearchResults] = useState<InspirationAccount[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  // 临时输入值状态，用于即时显示用户输入
+  const [tempSearchInput, setTempSearchInput] = useState('');
   const [autoReplyData, setAutoReplyData] = useState<Card[]>([]);
   const [loading, setLoading] = useState(false);
   const [accountsLoading, setAccountsLoading] = useState(false);
@@ -59,6 +75,10 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
   // 节流定时器
   const throttleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const THROTTLE_DELAY = 1000; // 1秒延迟
+  
+  // 搜索防抖定时器
+  const searchDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const SEARCH_DEBOUNCE_DELAY = 300; // 300ms防抖延迟
   
   // 操作回调队列
   const operationCallbacksRef = useRef<Map<number, (success: boolean) => void>>(new Map());
@@ -80,12 +100,29 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
     }
   }, [showInspirationAccounts]);
 
+  // 同步临时输入值与当前标签页的搜索状态
+  useEffect(() => {
+    if (tempSearchInput === '') {
+      // 当临时输入值为空时，从当前标签页的搜索状态恢复
+      const currentQuery = activeTab === 'starred' ? starredSearchQuery : 
+                          activeTab === 'outreach' ? outreachSearchQuery : '';
+      if (currentQuery) {
+        setTempSearchInput(currentQuery);
+      }
+    }
+  }, [activeTab, starredSearchQuery, outreachSearchQuery, tempSearchInput]);
+
   // 清理定时器
   useEffect(() => {
     return () => {
       // 清理批量操作节流定时器
       if (throttleTimerRef.current) {
         clearTimeout(throttleTimerRef.current);
+      }
+      
+      // 清理搜索防抖定时器
+      if (searchDebounceTimerRef.current) {
+        clearTimeout(searchDebounceTimerRef.current);
       }
       
       // 清理延迟加载outreach数据的定时器
@@ -222,6 +259,14 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
     outreach: []
   });
 
+  // 缓存搜索结果，用于快速显示
+  const cachedSearchResultsRef = useRef<{
+    [key: string]: { [query: string]: InspirationAccount[] }
+  }>({
+    starred: {},
+    outreach: {}
+  });
+
   // Fetch inspiration accounts from API
   const fetchInspirationAccounts = async (type?: 'starred' | 'outreach', query?: string, isDelayedLoad: boolean = false) => {
     // 如果是延迟加载且该类型已经请求过，则不重复请求
@@ -232,9 +277,43 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
     // 标记该类型已经请求过
     requestedTypesRef.current.add(type || 'starred');
     
-    // 如果是搜索查询，直接设置loading状态
+    const accountType = type || 'starred';
+    
+    // 如果是搜索查询
     if (query) {
-      setAccountsLoading(true);
+      // 先检查是否有缓存的搜索结果
+      const cachedSearchResults = cachedSearchResultsRef.current[accountType][query];
+      if (cachedSearchResults && cachedSearchResults.length > 0) {
+        // 优先显示缓存的搜索结果
+        setSearchResults(cachedSearchResults);
+        setAccountsLoading(false);
+        
+        // 异步获取最新数据
+        setTimeout(async () => {
+          try {
+            const response = await inspirationAccountService.getInspirationAccounts({
+              type,
+              q: query,
+              page_size: 50
+            });
+            
+            const transformedAccounts = response.data.map(account => 
+              inspirationAccountService.transformToInspirationAccount(account)
+            );
+            
+            // 更新搜索结果缓存
+            cachedSearchResultsRef.current[accountType][query] = transformedAccounts;
+            setSearchResults(transformedAccounts);
+          } catch (error) {
+            logger.error('Failed to refresh search results:', error);
+          }
+        }, 100);
+        
+        return;
+      } else {
+        // 没有缓存，显示loading状态
+        setAccountsLoading(true);
+      }
     } else {
       // 始终设置loading状态，确保loading效果在所有标签页都能显示
       // 但如果是延迟加载且不是当前活动标签，则不显示loading状态
@@ -243,7 +322,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
       }
       
       // 如果有缓存数据，先显示缓存数据
-      const cachedData = cachedAccountsRef.current[type || 'starred'];
+      const cachedData = cachedAccountsRef.current[accountType];
       if (cachedData && cachedData.length > 0) {
         setInspirationAccounts(cachedData);
       }
@@ -261,10 +340,12 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
       );
       
       if (query) {
+        // 更新搜索结果缓存
+        cachedSearchResultsRef.current[accountType][query] = transformedAccounts;
         setSearchResults(transformedAccounts);
       } else {
         // 更新缓存
-        cachedAccountsRef.current[type || 'starred'] = transformedAccounts;
+        cachedAccountsRef.current[accountType] = transformedAccounts;
         setInspirationAccounts(transformedAccounts);
       }
     } catch (error) {
@@ -295,14 +376,50 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
       ? activeTab 
       : 'starred'; // 默认使用starred作为备选
     
-    // 只加载当前活动标签的数据
-    if (validAccountType === 'starred') {
-      fetchInspirationAccounts('starred');
-      // 移除自动延迟加载outreach数据的逻辑
-    } else if (validAccountType === 'outreach') {
-      fetchInspirationAccounts('outreach');
+    // 获取当前标签的搜索关键词
+    const currentSearchQuery = validAccountType === 'starred' ? starredSearchQuery : outreachSearchQuery;
+    
+    // 如果有搜索关键词，执行搜索；否则加载默认数据
+    if (currentSearchQuery.trim()) {
+      // 有搜索词时，优先显示缓存的搜索结果，然后异步刷新
+      const cachedSearchResults = cachedSearchResultsRef.current[validAccountType][currentSearchQuery];
+      if (cachedSearchResults && cachedSearchResults.length > 0) {
+        setSearchResults(cachedSearchResults);
+        // 异步刷新搜索结果，不阻塞UI
+        setTimeout(() => {
+          fetchInspirationAccounts(validAccountType, currentSearchQuery);
+        }, 100);
+      } else {
+        // 没有缓存时才立即获取
+        fetchInspirationAccounts(validAccountType, currentSearchQuery);
+      }
+    } else {
+      // 清空搜索结果
+      setSearchResults([]);
+      
+      // 检查是否有缓存的列表数据
+      const cachedListData = cachedAccountsRef.current[validAccountType];
+      if (cachedListData && cachedListData.length > 0) {
+        // 优先显示缓存数据
+        setInspirationAccounts(cachedListData);
+        // 异步刷新列表数据
+        setTimeout(() => {
+          if (validAccountType === 'starred') {
+            fetchInspirationAccounts('starred');
+          } else if (validAccountType === 'outreach') {
+            fetchInspirationAccounts('outreach');
+          }
+        }, 100);
+      } else {
+        // 没有缓存时才立即获取
+        if (validAccountType === 'starred') {
+          fetchInspirationAccounts('starred');
+        } else if (validAccountType === 'outreach') {
+          fetchInspirationAccounts('outreach');
+        }
+      }
     }
-  }, [showInspirationAccounts, activeTab]);
+  }, [showInspirationAccounts, activeTab, starredSearchQuery, outreachSearchQuery]);
 
   // Fetch engagement queue data from API
   const fetchEngagementData = async () => {
@@ -445,8 +562,8 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
     });
   };
 
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query);
+  // 执行实际搜索的函数
+  const performSearch = async (query: string) => {
     if (query.trim()) {
       setIsSearching(true);
       
@@ -461,33 +578,74 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
         ? activeTab 
         : 'outreach'; // 默认使用outreach作为备选
       
-      // 搜索时不使用延迟加载
-      await fetchInspirationAccounts(validAccountType, query);
-      setIsSearching(false);
+      try {
+        // 搜索时不使用延迟加载
+        await fetchInspirationAccounts(validAccountType, query);
+      } finally {
+        setIsSearching(false);
+      }
     } else {
       setSearchResults([]);
       setIsSearching(false);
       
-      // 清除搜索后，重新加载当前标签的数据
-      // 确保只传递有效的账号类型参数
-      const validAccountType = (activeTab === 'starred' || activeTab === 'outreach') 
-        ? activeTab 
-        : 'starred'; // 默认使用starred作为备选
-      
-      // 清除已请求类型标记
+      // 清除搜索缓存
       requestedTypesRef.current.clear();
       
-      // 只加载当前活动标签的数据
-      if (validAccountType === 'starred') {
-        fetchInspirationAccounts('starred');
-      } else if (validAccountType === 'outreach') {
-        fetchInspirationAccounts('outreach');
-      }
+      // 重新加载当前标签页的数据
+      const validAccountType = (activeTab === 'starred' || activeTab === 'outreach') 
+        ? activeTab 
+        : 'outreach';
+      
+      await fetchInspirationAccounts(validAccountType);
     }
   };
 
+  const handleSearch = (query: string) => {
+    // 立即更新临时输入值以提供即时反馈
+    setTempSearchInput(query);
+    
+    // 清除之前的防抖定时器
+    if (searchDebounceTimerRef.current) {
+      clearTimeout(searchDebounceTimerRef.current);
+    }
+    
+    // 设置新的防抖定时器
+    searchDebounceTimerRef.current = setTimeout(() => {
+      // 在防抖延迟后更新状态并持久化
+      if (activeTab === 'starred') {
+        setStarredSearchQuery(query);
+        try {
+          localStorage.setItem('inspiration-accounts-starred-search', query);
+        } catch {
+          // 忽略localStorage错误
+        }
+      } else if (activeTab === 'outreach') {
+        setOutreachSearchQuery(query);
+        try {
+          localStorage.setItem('inspiration-accounts-outreach-search', query);
+        } catch {
+          // 忽略localStorage错误
+        }
+      }
+      
+      // 清除临时输入值，使用正式状态
+      setTempSearchInput('');
+      performSearch(query);
+    }, SEARCH_DEBOUNCE_DELAY);
+  };
+
+  // 获取当前标签页的搜索关键词
+  const getCurrentSearchQuery = () => {
+    // 如果有临时输入值，优先返回临时输入值
+    if (tempSearchInput !== '') return tempSearchInput;
+    
+    if (activeTab === 'starred') return starredSearchQuery;
+    if (activeTab === 'outreach') return outreachSearchQuery;
+    return '';
+  };
+
   // Get display accounts based on current tab and search
-  const displayAccounts = searchQuery.trim() 
+  const displayAccounts = getCurrentSearchQuery().trim() 
     ? searchResults 
     : inspirationAccounts.filter(account => {
         // 修复过滤逻辑：outreach标签页应该显示所有账号，包括已starred的
@@ -541,16 +699,12 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
             </div>
             <input
               type="text"
-              value={searchQuery}
+              value={getCurrentSearchQuery()}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search accounts..."
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-            {isSearching && (
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-              </div>
-            )}
+
           </div>
 
           {/* Items Count */}
@@ -559,7 +713,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
             <span className="text-sm font-medium text-gray-600">
               {displayAccounts.length} accounts
             </span>
-            {accountsLoading && (
+            {(isSearching || accountsLoading) && (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 ml-2"></div>
             )}
           </div>
@@ -571,7 +725,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
             <div className="text-center py-8">
               <Users size={48} className="mx-auto text-gray-400 mb-4" />
               <p className="text-gray-500">
-                {searchQuery.trim() ? 'No accounts found' : (activeTab === 'starred' ? 'No starred accounts' : 'No outreach accounts available')}
+                {getCurrentSearchQuery().trim() ? 'No accounts found' : (activeTab === 'starred' ? 'No starred accounts' : 'No outreach accounts available')}
               </p>
             </div>
           ) : (
