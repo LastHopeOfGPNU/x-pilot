@@ -62,11 +62,16 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
     }
   }, [user]);
 
-  // Check Twitter connection status function
-  const checkTwitterConnection = async () => {
+  // Check Twitter connection status function with retry mechanism
+  const checkTwitterConnection = async (retryCount = 0, maxRetries = 3) => {
     if (user) {
       setConnectLoading(true);
       try {
+        // 如果是重试，添加延迟等待数据库同步
+        if (retryCount > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        }
+        
         // 获取详细的连接状态信息
         const status = await twitterService.getConnectionStatus();
         setTwitterStatus(status);
@@ -78,11 +83,22 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
           setTwitterConnection(null);
         }
       } catch (error) {
-        logger.error('Error checking Twitter connection:', error);
+        logger.error(`Error checking Twitter connection (attempt ${retryCount + 1}):`, error);
+        
+        // 如果还有重试次数且不是网络错误，则重试
+        if (retryCount < maxRetries && !error.message?.includes('Failed to fetch')) {
+          setTimeout(() => {
+            checkTwitterConnection(retryCount + 1, maxRetries);
+          }, 1000 * (retryCount + 1));
+          return;
+        }
+        
         setTwitterStatus(null);
         setTwitterConnection(null);
       } finally {
-        setConnectLoading(false);
+        if (retryCount === 0 || retryCount >= maxRetries) {
+          setConnectLoading(false);
+        }
       }
     }
   };
@@ -166,8 +182,10 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
           setConnectLoading(false);
           window.removeEventListener('message', handleMessage);
           
-          // 重新检查连接状态以确保界面同步
-          checkTwitterConnection();
+          // 延迟重新检查连接状态，确保数据库操作完成
+          setTimeout(() => {
+            checkTwitterConnection();
+          }, 2000);
         } else if (event.data.type === 'TWITTER_AUTH_ERROR') {
           // 授权失败
           logger.error('Twitter authorization failed:', event.data.error);
