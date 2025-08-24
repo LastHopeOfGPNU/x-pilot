@@ -8,6 +8,7 @@ interface OnboardingContextType {
   error: string | null;
   refreshOnboardingStatus: () => Promise<void>;
   completeOnboarding: () => void;
+  skipOnboarding: () => Promise<void>;
 }
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
@@ -65,6 +66,29 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     setOnboardingStatus({ is_finished: true, current_step: 'ENGAGEMENT' });
   };
 
+  const skipOnboarding = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const result = await onboardingService.skipOnboarding();
+      
+      if (result.success) {
+        setOnboardingStatus({
+          is_finished: result.is_finished,
+          current_step: result.current_step
+        });
+      } else {
+        throw new Error('跳过onboarding失败');
+      }
+    } catch (err) {
+      logger.error('Failed to skip onboarding:', err);
+      setError('跳过onboarding失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchOnboardingStatus();
   }, []);
@@ -74,7 +98,8 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     loading,
     error,
     refreshOnboardingStatus,
-    completeOnboarding
+    completeOnboarding,
+    skipOnboarding
   };
 
   return (

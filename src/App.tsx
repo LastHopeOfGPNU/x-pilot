@@ -374,7 +374,7 @@ const AppContent: React.FC = () => {
   const showAutoEngagement = activeMenuItem === 'Auto Engagement';
   const showPostThreadQueue = activeMenuItem === 'Get Post/Thread';
   const showMarketingStrategy = activeMenuItem === 'Marketing Strategy';
-  const showConfig = activeMenuItem === 'Config';
+  const showProperties = activeMenuItem === 'Properties';
   const showProfile = activeMenuItem === 'Profile';
 
   return (
@@ -398,6 +398,7 @@ const AppContent: React.FC = () => {
             {/* Activity Queue / Config / Profile / Dashboard / Marketing Strategy */}
             <div className={`${
               showDashboard || showProfile ? 'w-full' : 
+              showProperties ? 'w-1/3' :
               canShowBothPanels ? 'w-auto' : 'flex-1'
             } min-w-[500px] overflow-hidden`}>
               {showDashboard ? (
@@ -407,7 +408,7 @@ const AppContent: React.FC = () => {
                   initialSection={profileInitialSection} 
                   onNavigate={handleDashboardNavigate}
                 />
-              ) : showConfig ? (
+              ) : showProperties ? (
                 <Config 
                   onItemClick={handleConfigItemClick} 
                   selectedItemId={selectedConfigItem?.id?.toString()}
@@ -422,6 +423,14 @@ const AppContent: React.FC = () => {
                   onPostClick={handlePostClick}
                   selectedPostId={selectedPostId || undefined}
                 />
+              ) : showAutoEngagement ? (
+                <EngagementQueue 
+                  showInspirationAccounts={showInspirationAccounts} 
+                  onCardClick={handleCardClick}
+                  onAccountClick={handleAccountClick}
+                  selectedCardId={selectedCard?.id}
+                  selectedAccountId={selectedAccount?.id}
+                />
               ) : (
                 <EngagementQueue 
                   showInspirationAccounts={showInspirationAccounts} 
@@ -435,7 +444,7 @@ const AppContent: React.FC = () => {
             
             {/* Results Area - only show when not Dashboard and not Profile and when there's enough space */}
             <div className={`overflow-hidden flex-1 min-w-0 ${
-              !showDashboard && !showProfile && canShowBothPanels ? 'block' : 'hidden'
+              !showDashboard && !showProfile && (canShowBothPanels || showProperties) ? 'block' : 'hidden'
             }`}>
               <ResultsArea 
                 selectedCard={selectedCard} 

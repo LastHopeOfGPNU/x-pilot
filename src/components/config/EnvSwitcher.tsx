@@ -4,15 +4,18 @@ import { apiConfigService } from '../../lib/apiConfigService';
 import { devConfigService } from '../../lib/devConfigService';
 import { supabase } from '../../lib/supabase';
 import { logger } from '../../utils/logger';
+import { useOnboarding } from '../../contexts/OnboardingContext';
 
 interface EnvSwitcherProps {
   className?: string;
 }
 
 const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
+  const { skipOnboarding } = useOnboarding();
   const [isLocalEnv, setIsLocalEnv] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isSkippingOnboarding, setIsSkippingOnboarding] = useState(false);
   const [showCopilotDevConsole, setShowCopilotDevConsole] = useState(false);
   const [showAllMessages, setShowAllMessages] = useState(false);
   const [copilotKitRuntimeUrl, setCopilotKitRuntimeUrl] = useState('');
@@ -201,6 +204,20 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
     }
   };
 
+  const handleSkipOnboarding = async () => {
+    setIsSkippingOnboarding(true);
+    try {
+      await skipOnboarding();
+      // 跳过成功后刷新页面进入主界面
+      window.location.reload();
+    } catch (error) {
+      logger.error('跳过引导流程出错:', error);
+      alert('跳过引导流程失败，请稍后重试');
+    } finally {
+      setIsSkippingOnboarding(false);
+    }
+  };
+
   const environments = apiConfigService.getAvailableEnvironments();
 
   return (
@@ -288,16 +305,21 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
                 <div className="flex justify-between items-center">
                   <div>
                     <div className="text-sm font-medium text-gray-700">跳过Onboarding</div>
-                    <div className="text-xs text-gray-500">直接进入主界面</div>
+                    <div className="text-xs text-gray-500">调用API跳过引导流程到最后步骤</div>
                   </div>
                   <button
-                    onClick={() => {
-                      localStorage.setItem('onboarding-status', 'finished');
-                      window.location.reload();
-                    }}
-                    className="px-3 py-1.5 bg-orange-600 text-white text-xs font-medium rounded hover:bg-orange-700 transition-colors"
+                    onClick={handleSkipOnboarding}
+                    disabled={isSkippingOnboarding}
+                    className="px-3 py-1.5 bg-orange-600 text-white text-xs font-medium rounded hover:bg-orange-700 disabled:bg-orange-400 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
                   >
-                    跳过
+                    {isSkippingOnboarding ? (
+                      <>
+                        <RotateCcw size={12} className="animate-spin" />
+                        跳过中...
+                      </>
+                    ) : (
+                      '跳过'
+                    )}
                   </button>
                 </div>
               </div>

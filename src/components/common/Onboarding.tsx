@@ -30,8 +30,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
   const [disconnectLoading, setDisconnectLoading] = useState(false);
   const { user } = useAuth();
   
-  // Check Twitter connection status function
-  const checkTwitterConnection = async () => {
+  // Check Twitter connection status function with retry mechanism
+  const checkTwitterConnection = async (retryCount = 0, maxRetries = 3) => {
     if (currentStep === 'CONNECT') {
       const mockMode = localStorage.getItem('dev-onboarding-mode') === 'true';
       
@@ -41,6 +41,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
 
       setConnectLoading(true);
       try {
+        // 如果是重试，添加延迟等待数据库同步
+        if (retryCount > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        }
+        
         // Always try real API request first
         const status = await twitterService.getConnectionStatus();
         setTwitterStatus(status);
@@ -53,7 +58,15 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
           setTwitterConnection(null);
         }
       } catch (error) {
-        logger.error('Error checking Twitter connection:', error);
+        logger.error(`Error checking Twitter connection (attempt ${retryCount + 1}):`, error);
+        
+        // 如果还有重试次数且不是网络错误，则重试
+        if (retryCount < maxRetries && !error.message?.includes('Failed to fetch')) {
+          setTimeout(() => {
+            checkTwitterConnection(retryCount + 1, maxRetries);
+          }, 1000 * (retryCount + 1));
+          return;
+        }
         // In mock mode, simulate connection status
         if (mockMode) {
           setTwitterConnection(null); // Default to not connected for testing
@@ -64,7 +77,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
           });
         }
       } finally {
-        setConnectLoading(false);
+        if (retryCount === 0 || retryCount >= maxRetries) {
+          setConnectLoading(false);
+        }
       }
     }
   };
@@ -312,8 +327,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
           setError(null);
           window.removeEventListener('message', handleMessage);
           
-          // 重新检查连接状态以确保界面同步
-          checkTwitterConnection();
+          // 授权成功后，更新状态为已连接，然后延迟验证确保数据库同步
+          setTwitterStatus({
+            has_records: true,
+            is_active: true,
+            is_expired: false,
+            is_twitter_connected: true
+          });
+          
+          // 延迟验证连接状态，确保数据库操作完成
+          setTimeout(() => {
+            checkTwitterConnection();
+          }, 2000);
         } else if (event.data.type === 'TWITTER_AUTH_ERROR') {
           // 授权失败
           setError(event.data.error || 'Twitter authorization failed');
@@ -376,8 +401,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete, initialStep = 'STAR
           setError(null);
           window.removeEventListener('message', handleMessage);
           
-          // 重新检查连接状态以确保界面同步
-          checkTwitterConnection();
+          // 授权成功后，更新状态为已连接，然后延迟验证确保数据库同步
+          setTwitterStatus({
+            has_records: true,
+            is_active: true,
+            is_expired: false,
+            is_twitter_connected: true
+          });
+          
+          // 延迟验证连接状态，确保数据库操作完成
+          setTimeout(() => {
+            checkTwitterConnection();
+          }, 2000);
         } else if (event.data.type === 'TWITTER_AUTH_ERROR') {
           // 授权失败
           setError(event.data.error || 'Twitter reconnection failed');

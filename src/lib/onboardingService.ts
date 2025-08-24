@@ -161,6 +161,76 @@ class OnboardingService {
     }
   }
 
+  // 跳过onboarding - 直接设置为最后一个步骤
+  async skipOnboarding(): Promise<OnboardingForwardResponse> {
+    if (this.isOnboardingMockMode()) {
+      // Mock implementation - 直接设置为完成状态
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      mockOnboardingState = {
+        current_step: 'ENGAGEMENT',
+        is_finished: true,
+      };
+      
+      return {
+        success: true,
+        current_step: 'ENGAGEMENT',
+        is_finished: true
+      };
+    } else {
+      // 真实API实现 - 多次调用forward接口直到完成
+      try {
+        const headers = await this.getAuthHeaders();
+        
+        // 获取当前步骤
+        let currentStatus = await this.getCurrentStep();
+        
+        // 如果已经完成，直接返回
+        if (currentStatus.is_finished) {
+          return {
+            success: true,
+            current_step: currentStatus.current_step,
+            is_finished: true
+          };
+        }
+        
+        // 循环调用forward接口直到完成所有步骤
+        while (!currentStatus.is_finished) {
+          const url = `${this.baseUrl}/api/onboarding/step/forward`;
+          
+          const response = await fetch(url, {
+            method: 'POST',
+            headers,
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const result = await response.json();
+          currentStatus = {
+            is_finished: result.is_finished,
+            current_step: result.current_step
+          };
+          
+          // 防止无限循环
+          if (result.success === false) {
+            break;
+          }
+        }
+        
+        return {
+          success: true,
+          current_step: currentStatus.current_step,
+          is_finished: currentStatus.is_finished
+        };
+      } catch (error) {
+        logger.error('Error skipping onboarding:', error);
+        throw error;
+      }
+    }
+  }
+
   // 重置mock状态的辅助方法（用于测试）
   resetMockState() {
     mockOnboardingState = {

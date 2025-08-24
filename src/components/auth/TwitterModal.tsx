@@ -192,12 +192,99 @@ export const TwitterModal: React.FC<TwitterModalProps> = ({
             </div>
           </div>
 
-          {/* 安全提示 */}
-          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-            <p className="text-sm text-amber-800 dark:text-amber-200">
-              Due to X's security restrictions, we cannot display live content directly. Click "View on X" to see the complete profile.
-            </p>
-          </div>
+          {/* 详细账户信息 */}
+          {accountData && (
+            <div className="space-y-4">
+              {/* 账户状态信息 */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Account Status</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      accountData.is_starred ? 'bg-yellow-500' : 'bg-gray-300'
+                    }`}></div>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {accountData.is_starred ? 'Starred' : 'Not Starred'}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      accountData.is_target ? 'bg-green-500' : 'bg-gray-300'
+                    }`}></div>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {accountData.is_target ? 'Targeted' : 'Not Targeted'}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      accountData.verified ? 'bg-blue-500' : 'bg-gray-300'
+                    }`}></div>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {accountData.verified ? 'Verified' : 'Not Verified'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 详细统计信息 */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Detailed Statistics</h4>
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Account ID</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white font-mono">
+                      {accountData.id}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Username</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      @{accountData.username}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Display Name</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {accountData.display_name}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Followers</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {(accountData.followers_count ?? 0).toLocaleString()}
+                    </span>
+                  </div>
+                  {accountData.following_count !== undefined && (
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Following</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        {accountData.following_count.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  {accountData.tweet_count !== undefined && (
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Total Tweets</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        {accountData.tweet_count.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  {accountData.following_count !== undefined && (
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Follower/Following Ratio</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        {accountData.following_count > 0 
+                          ? (accountData.followers_count / accountData.following_count).toFixed(2)
+                          : '∞'
+                        }
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 操作按钮 */}
           <div className="flex flex-col space-y-3 sm:flex-row sm:space-x-4 sm:space-y-0">
@@ -205,10 +292,10 @@ export const TwitterModal: React.FC<TwitterModalProps> = ({
               onClick={() => window.open(twitterUrl, '_blank', 'noopener,noreferrer')}
               className="flex items-center justify-center space-x-2 rounded-lg bg-blue-600 px-6 py-3 text-white transition-all hover:bg-blue-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
+              <span>View on</span>
               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
               </svg>
-              <span>View on X</span>
             </button>
             
             <button

@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { twitterService, TwitterConnection, TwitterConnectionStatus } from '../../lib/twitterService';
 import ConfirmationModal from '../common/ConfirmationModal';
 import { logger } from '../../utils/logger';
+import { dashboardService, DashboardData } from '../../lib/dashboardService';
 
 interface ProfileProps {
   onClose?: () => void;
@@ -22,6 +23,8 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
   const [connectLoading, setConnectLoading] = useState(false);
   const [showDisconnectModal, setShowDisconnectModal] = useState(false);
   const [disconnectLoading, setDisconnectLoading] = useState(false);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
 
   const [profileData, setProfileData] = useState({
     name: '',
@@ -59,11 +62,16 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
     }
   }, [user]);
 
-  // Check Twitter connection status function
-  const checkTwitterConnection = async () => {
+  // Check Twitter connection status function with retry mechanism
+  const checkTwitterConnection = async (retryCount = 0, maxRetries = 3) => {
     if (user) {
       setConnectLoading(true);
       try {
+        // 如果是重试，添加延迟等待数据库同步
+        if (retryCount > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        }
+        
         // 获取详细的连接状态信息
         const status = await twitterService.getConnectionStatus();
         setTwitterStatus(status);
@@ -75,11 +83,22 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
           setTwitterConnection(null);
         }
       } catch (error) {
-        logger.error('Error checking Twitter connection:', error);
+        logger.error(`Error checking Twitter connection (attempt ${retryCount + 1}):`, error);
+        
+        // 如果还有重试次数且不是网络错误，则重试
+        if (retryCount < maxRetries && !error.message?.includes('Failed to fetch')) {
+          setTimeout(() => {
+            checkTwitterConnection(retryCount + 1, maxRetries);
+          }, 1000 * (retryCount + 1));
+          return;
+        }
+        
         setTwitterStatus(null);
         setTwitterConnection(null);
       } finally {
-        setConnectLoading(false);
+        if (retryCount === 0 || retryCount >= maxRetries) {
+          setConnectLoading(false);
+        }
       }
     }
   };
@@ -163,8 +182,10 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
           setConnectLoading(false);
           window.removeEventListener('message', handleMessage);
           
-          // 重新检查连接状态以确保界面同步
-          checkTwitterConnection();
+          // 延迟重新检查连接状态，确保数据库操作完成
+          setTimeout(() => {
+            checkTwitterConnection();
+          }, 2000);
         } else if (event.data.type === 'TWITTER_AUTH_ERROR') {
           // 授权失败
           logger.error('Twitter authorization failed:', event.data.error);
@@ -288,13 +309,25 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
     }
   };
 
-  const recentActivity = [
-    { id: 1, content: 'Auto-replied to @techcrunch', time: '2 minutes ago', icon: MessageSquare },
-    { id: 2, content: 'Gained 15 new followers', time: '1 hour ago', icon: Users },
-    { id: 3, content: 'Connected new Twitter account', time: '1 day ago', icon: Settings },
-    { id: 4, content: 'Updated profile information', time: '2 days ago', icon: User },
-    { id: 5, content: 'Generated weekly analytics report', time: '3 days ago', icon: BarChart3 }
-  ];
+  // Fetch dashboard data for overview
+  const fetchDashboardData = async () => {
+    try {
+      setDashboardLoading(true);
+      const data = await dashboardService.getDashboardData(true, 3);
+      setDashboardData(data);
+    } catch (error) {
+      logger.error('Failed to fetch dashboard data:', error);
+    } finally {
+      setDashboardLoading(false);
+    }
+  };
+
+  // Load dashboard data when component mounts or when switching to overview
+  useEffect(() => {
+    if (activeSection === 'overview') {
+      fetchDashboardData();
+    }
+  }, [activeSection]);
 
   // Custom X/Twitter icon component
   const XIcon = ({ size = 16 }: { size?: number }) => (
@@ -348,43 +381,74 @@ const Profile: React.FC<ProfileProps> = ({ onClose, initialSection = 'overview',
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-4">
         <div className="p-6 text-center bg-white rounded-lg border border-gray-200 shadow-sm">
-          <div className="text-2xl font-bold text-blue-600">1,247</div>
-          <div className="text-sm text-gray-600">Total Replies</div>
-          <div className="mt-2 text-xs text-green-600">+12% this week</div>
+          {dashboardLoading ? (
+            <div className="flex justify-center items-center h-16">
+              <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+            </div>
+          ) : (
+            <>
+              <div className="text-2xl font-bold text-blue-600">
+                {dashboardData?.stats?.total_replies?.toLocaleString() || '0'}
+              </div>
+              <div className="text-sm text-gray-600">Total Replies</div>
+              <div className="mt-2 text-xs text-green-600">
+                {dashboardData?.stats?.total_replies_change || '+0%'}
+              </div>
+            </>
+          )}
         </div>
         <div className="p-6 text-center bg-white rounded-lg border border-gray-200 shadow-sm">
-          <div className="text-2xl font-bold text-green-600">8.5%</div>
-          <div className="text-sm text-gray-600">Engagement Total</div>
-          <div className="mt-2 text-xs text-green-600">+2.3% this month</div>
+          {dashboardLoading ? (
+            <div className="flex justify-center items-center h-16">
+              <Loader2 className="w-6 h-6 animate-spin text-green-600" />
+            </div>
+          ) : (
+            <>
+              <div className="text-2xl font-bold text-green-600">
+                {dashboardData?.stats?.engagement_rate?.toFixed(1) || '0.0'}%
+              </div>
+              <div className="text-sm text-gray-600">Engagement Rate</div>
+              <div className="mt-2 text-xs text-green-600">
+                {dashboardData?.stats?.engagement_rate_change || '+0%'}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {/* Recent Activity */}
       <div className="p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
         <h3 className="mb-4 text-lg font-semibold text-gray-900">Recent Activity</h3>
-        <div className="space-y-4">
-          <div className="flex items-center p-3 space-x-3 bg-blue-50 rounded-lg">
-            <MessageSquare className="w-5 h-5 text-blue-600" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">Auto-replied to @techcrunch</p>
-              <p className="text-xs text-gray-500">2 minutes ago</p>
-            </div>
+        {dashboardLoading ? (
+          <div className="flex justify-center items-center h-24">
+            <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
           </div>
-          <div className="flex items-center p-3 space-x-3 bg-green-50 rounded-lg">
-            <Users className="w-5 h-5 text-green-600" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">Gained 15 new followers</p>
-              <p className="text-xs text-gray-500">1 hour ago</p>
-            </div>
+        ) : (
+          <div className="space-y-4">
+            {dashboardData?.recent_activities?.length > 0 ? (
+              dashboardData.recent_activities.map((activity) => {
+                const activityStyle = dashboardService.getActivityStyle(activity.type);
+                const colorClasses = dashboardService.getColorClasses(activityStyle.color);
+                const IconComponent = activityStyle.icon;
+                
+                return (
+                  <div key={activity.id} className={`flex items-center p-3 space-x-3 ${colorClasses.bg} rounded-lg`}>
+                    <IconComponent className={`w-5 h-5 ${colorClasses.text}`} />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                      <p className="text-xs text-gray-500">{activity.time_ago}</p>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>No recent activity</p>
+              </div>
+            )}
           </div>
-          <div className="flex items-center p-3 space-x-3 bg-blue-50 rounded-lg">
-            <BarChart3 className="w-5 h-5 text-[#4792E6]" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">Generated weekly analytics report</p>
-              <p className="text-xs text-gray-500">3 days ago</p>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Account Info */}

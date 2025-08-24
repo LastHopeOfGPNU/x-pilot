@@ -55,6 +55,9 @@ export const TwitterDirectCallback: React.FC = () => {
           setStatus('success');
           setMessage('Twitter账户授权成功！');
           
+          // 额外延迟确保数据库操作完全完成
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
           // 检查是否在弹出窗口中
           const isPopup = window.opener && window.opener !== window;
           

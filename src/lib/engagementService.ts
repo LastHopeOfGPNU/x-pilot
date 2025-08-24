@@ -86,6 +86,7 @@ class EngagementService {
   // 获取互动队列列表
   async getEngagements(params?: {
     type?: 'reply' | 'repost';
+    status?: 'pending' | 'posted' | 'rejected';
     page_num?: number;
     page_size?: number;
   }): Promise<EngagementsListResponse> {
@@ -98,6 +99,9 @@ class EngagementService {
         // API使用interaction_type参数，并且reply对应autoReply
         const interactionType = params.type === 'reply' ? 'autoReply' : 'autoRepost';
         searchParams.append('interaction_type', interactionType);
+      }
+      if (params?.status) {
+        searchParams.append('status', params.status);
       }
       if (params?.page_num) {
         searchParams.append('page_num', params.page_num.toString());
