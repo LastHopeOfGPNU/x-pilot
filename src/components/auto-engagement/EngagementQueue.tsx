@@ -427,6 +427,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
     try {
       const response = await engagementService.getEngagements({
         type: 'reply', // 只获取回复类型的互动
+        status: 'pending', // 只获取待处理状态的互动
         page_size: 50
       });
       
