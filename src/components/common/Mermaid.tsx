@@ -102,7 +102,7 @@ export const Mermaid: React.FC<MermaidProps> = ({ chart, className = '' }) => {
         justifyContent: 'center'
       }}
     >
-      <div className="text-gray-500 text-sm">加载中...</div>
+      <div className="text-gray-500 text-sm">Loading...</div>
     </div>
   );
 };
