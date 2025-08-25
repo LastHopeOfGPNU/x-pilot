@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Settings, Globe, Server, RotateCcw, Terminal, MessageSquare } from 'lucide-react';
+import { Settings, Globe, Server, RotateCcw, Terminal, MessageSquare, BookOpen } from 'lucide-react';
 import { apiConfigService } from '../../lib/apiConfigService';
 import { devConfigService } from '../../lib/devConfigService';
 import { supabase } from '../../lib/supabase';
@@ -19,6 +19,7 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
   const [showCopilotDevConsole, setShowCopilotDevConsole] = useState(false);
   const [showAllMessages, setShowAllMessages] = useState(false);
   const [copilotKitRuntimeUrl, setCopilotKitRuntimeUrl] = useState('');
+  const [enableUserGuide, setEnableUserGuide] = useState(devConfigService.getEnableUserGuide());
   const [position, setPosition] = useState({ x: 20, y: window.innerHeight - 150 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -45,6 +46,7 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
     const handleDevConfigChange = (config: any) => {
       setShowCopilotDevConsole(config.showCopilotDevConsole);
       setShowAllMessages(config.showAllMessages);
+      setEnableUserGuide(config.enableUserGuide);
     };
 
     apiConfigService.addListener(handleApiChange);
@@ -74,6 +76,11 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
   const handleShowAllMessagesToggle = () => {
     const newValue = devConfigService.toggleShowAllMessages();
     setShowAllMessages(newValue);
+  };
+
+  const handleEnableUserGuideToggle = () => {
+    const newValue = devConfigService.toggleEnableUserGuide();
+    setEnableUserGuide(newValue);
   };
 
   // 拖拽相关函数
@@ -362,6 +369,26 @@ const EnvSwitcher: React.FC<EnvSwitcherProps> = ({ className = '' }) => {
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAllMessages ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                    />
+                  </button>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <div className="flex gap-2 items-center">
+                    <BookOpen size={16} className="text-green-600" />
+                    <div>
+                       <div className="text-sm font-medium text-gray-700">启用用户指南</div>
+                       <div className="text-xs text-gray-500">开启/关闭用户指南功能，关闭后不会发送相关请求</div>
+                     </div>
+                  </div>
+                  <button
+                    onClick={handleEnableUserGuideToggle}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${enableUserGuide ? 'bg-green-600' : 'bg-gray-200'
+                      }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${enableUserGuide ? 'translate-x-6' : 'translate-x-1'
                         }`}
                     />
                   </button>

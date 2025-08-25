@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { userGuideService, UserGuideStatus, UserGuideStep } from '../lib/userGuideService';
+import { devConfigService } from '../lib/devConfigService';
 
 // Context接口定义
 interface UserGuideContextType {
@@ -29,6 +30,18 @@ export const UserGuideProvider: React.FC<UserGuideProviderProps> = ({ children }
 
   // 获取用户指导状态
   const fetchUserGuideStatus = async () => {
+    // 检查是否启用用户指南
+    if (!devConfigService.getEnableUserGuide()) {
+      setUserGuideStatus({
+        is_finished: true, // 设置为已完成，避免触发用户指南
+        current_step: null,
+        completed_steps: [],
+        last_updated: new Date().toISOString()
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -58,6 +71,11 @@ export const UserGuideProvider: React.FC<UserGuideProviderProps> = ({ children }
 
   // 开始用户指导步骤
   const startUserGuideStep = async (step: UserGuideStep) => {
+    // 检查是否启用用户指南
+    if (!devConfigService.getEnableUserGuide()) {
+      return;
+    }
+
     try {
       setError(null);
       const updatedStatus = await userGuideService.updateUserGuideProgress(step, 'start');
@@ -70,6 +88,11 @@ export const UserGuideProvider: React.FC<UserGuideProviderProps> = ({ children }
 
   // 完成用户指导步骤
   const completeUserGuideStep = async (step: UserGuideStep) => {
+    // 检查是否启用用户指南
+    if (!devConfigService.getEnableUserGuide()) {
+      return;
+    }
+
     try {
       setError(null);
       const updatedStatus = await userGuideService.updateUserGuideProgress(step, 'complete');
@@ -82,6 +105,11 @@ export const UserGuideProvider: React.FC<UserGuideProviderProps> = ({ children }
 
   // 跳过用户指导
   const skipUserGuide = async () => {
+    // 检查是否启用用户指南
+    if (!devConfigService.getEnableUserGuide()) {
+      return;
+    }
+
     try {
       setError(null);
       // 跳过所有步骤，直接标记为完成
@@ -95,6 +123,11 @@ export const UserGuideProvider: React.FC<UserGuideProviderProps> = ({ children }
 
   // 重置用户指导
   const resetUserGuide = async () => {
+    // 检查是否启用用户指南
+    if (!devConfigService.getEnableUserGuide()) {
+      return;
+    }
+
     try {
       setError(null);
       const resetStatus = await userGuideService.resetUserGuideProgress();
@@ -105,7 +138,21 @@ export const UserGuideProvider: React.FC<UserGuideProviderProps> = ({ children }
     }
   };
 
-  // 不在初始化时自动获取状态，只在需要时手动调用
+  // 初始化时获取状态，并监听配置变化
+  useEffect(() => {
+    fetchUserGuideStatus();
+
+    // 监听开发配置变化
+    const handleConfigChange = () => {
+      fetchUserGuideStatus();
+    };
+
+    devConfigService.addListener(handleConfigChange);
+
+    return () => {
+      devConfigService.removeListener(handleConfigChange);
+    };
+  }, []);
 
   const value: UserGuideContextType = {
     userGuideStatus,
