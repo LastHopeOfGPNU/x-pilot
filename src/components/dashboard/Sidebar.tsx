@@ -59,6 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               key={item.name}
               onClick={() => handleItemClick(item.name, item.disabled)}
               disabled={item.disabled}
+              data-guide={item.name === 'Auto Engagement' ? 'left-menu' : undefined}
               className={`w-full flex items-center px-3 py-3 rounded-lg transition-colors mb-1 ${
                 isExpanded ? 'justify-start' : 'justify-center'
               } ${

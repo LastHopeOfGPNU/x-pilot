@@ -88,32 +88,46 @@ const AppContent: React.FC = () => {
   // 定义引导步骤
   const guideSteps: GuideStep[] = [
     {
+      id: 'left-menu',
+      title: '步骤1：进入自动互动功能',
+      content: '欢迎使用X-Pilot！首先点击左侧菜单的"Auto Engagement"按钮，进入自动互动功能模块。',
+      targetSelector: '[data-guide="left-menu"]',
+      position: 'right'
+    },
+    {
       id: 'auto-reply-tab',
-      title: '自动回复功能',
-      content: '这里是自动回复模块，您可以查看和管理所有需要回复的推文。系统会智能识别需要回复的内容，帮助您提高互动效率。',
+      title: '步骤2：选择自动回复标签',
+      content: '点击"autoReply"标签页，查看所有需要回复的推文。系统会智能识别需要回复的内容。',
       targetSelector: '[data-guide="auto-reply-tab"]',
       position: 'bottom'
     },
     {
-      id: 'auto-repost-tab',
-      title: '自动转发功能',
-      content: '自动转发模块让您可以轻松管理转发内容。选择合适的推文进行转发，扩大您的影响力和内容传播范围。',
-      targetSelector: '[data-guide="auto-repost-tab"]',
-      position: 'bottom'
+      id: 'auto-reply-list',
+      title: '步骤3：浏览回复列表',
+      content: '这里显示所有待回复的推文列表。您可以浏览并选择需要回复的内容。',
+      targetSelector: '[data-guide="auto-reply-list"]',
+      position: 'top'
     },
     {
-      id: 'starred-tab',
-      title: '星标内容',
-      content: '这里显示您标记为重要的内容。通过星标功能，您可以快速找到需要特别关注的推文和账户。',
-      targetSelector: '[data-guide="starred-tab"]',
-      position: 'bottom'
-    },
-    {
-      id: 'ai-chat',
-      title: 'AI 智能助手',
-      content: '我是您的AI助手，可以帮助您制定营销策略、分析数据、生成内容等。随时点击这里与我对话，获得专业的建议和支持。',
-      targetSelector: '[data-guide="ai-chat"]',
+      id: 'results-area',
+      title: '步骤4：查看详细信息',
+      content: '选择一条推文后，右侧区域会显示详细信息，包括推文内容、作者信息等。',
+      targetSelector: '[data-guide="results-area"]',
       position: 'left'
+    },
+    {
+      id: 'tools-button',
+      title: '步骤5：使用AI工具',
+      content: '点击"@Tools"按钮，然后在输入框中输入"@reply help me reply"来获取AI回复建议。',
+      targetSelector: '[data-guide="tools-button"]',
+      position: 'top'
+    },
+    {
+      id: 'send-button',
+      title: '步骤6：发送回复',
+      content: '编辑完回复内容后，点击"Send"按钮发送您的回复。恭喜您完成了自动回复功能的学习！',
+      targetSelector: '[data-guide="send-button"]',
+      position: 'top'
     }
   ];
   

@@ -802,7 +802,7 @@ const EngagementQueue: React.FC<EngagementQueueProps> = ({
       </div>
       
       {/* Content */}
-      <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-4 show-scrollbar">
+      <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-4 show-scrollbar" data-guide="auto-reply-list">
         {activeTab === 'autoReply' ? (
           autoReplyData.length === 0 ? (
             <div className="text-center py-8">
