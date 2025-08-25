@@ -7,12 +7,12 @@ export const useAIAssistantActions = () => {
   useCopilotAction({
     name: "replyPlan",
     available: "remote",
-    description: "每次用户请求使用reply_tool工具回复指令时，首先使用这个工具生成计划，根据用户指令和当前状态生成计划列表，计划使用的语言要和用户输入语言保持一致。后续reply_tool工具的调用需要等用户确认使用计划后再调用。",
+    description: "Every time a user requests to use the reply_tool to respond to instructions, first use this tool to generate a plan. Generate a plan list based on user instructions and current state, with the plan language consistent with the user's input language. Subsequent reply_tool calls should wait for user confirmation of the plan before execution.",
     parameters: [
       {
         name: "plans",
         type: "string[]",
-        description: "生成的计划列表，计划项目至少有三个，计划使用的语言要和用户输入语言保持一致",
+        description: "Generated plan list with at least three plan items, using language consistent with user input language",
         required: true
       },
     ],
