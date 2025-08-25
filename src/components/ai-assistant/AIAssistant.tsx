@@ -794,6 +794,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         onFocus={handleContainerFocus}
                         onBlur={handleInputBlur}
                         rows={1}
+                        data-guide="input-area"
                         style={{
                           height: '40px',
                           minHeight: '40px',
@@ -823,6 +824,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                       onClick={handleAtButtonClick}
                       className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:text-[#4792E6] hover:bg-blue-50 rounded-lg transition-colors duration-200 border border-gray-200 hover:border-[#4792E6]"
                       title="Select Capability"
+                      data-guide="tools-button"
                     >
                       <span className="text-sm font-medium">@</span>
                       <span className="text-sm">Tools</span>
@@ -843,6 +845,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onExpandedChange }) => {
                         : 'bg-[#4792E6] hover:bg-[#3a7bc8]'
                         }`}
                       title={isLoading || retryCount > 0 || copilotLoading ? "Stop" : isSending ? "Sending..." : "Send"}
+                      data-guide="send-button"
                     >
                       {isLoading || retryCount > 0 || copilotLoading ? (
                         <Square size={16} />

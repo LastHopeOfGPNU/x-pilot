@@ -827,7 +827,7 @@ const ResultsArea: React.FC<ResultsAreaProps> = ({ selectedCard, selectedAccount
   // If no item is selected, show default message
   if (!selectedCard && !selectedAccount && !selectedConfigItem && !selectedPostId && !selectedStrategy) {
     return (
-      <div className="flex flex-1 justify-center items-center bg-white h-full">
+      <div className="flex flex-1 justify-center items-center bg-white h-full" data-guide="results-area">
         <div className="text-center">
           <div className="flex justify-center items-center mx-auto mb-6 w-20 h-20 bg-blue-50 rounded-full">
             <MessageSquare size={32} className="text-[#4792E6]" />

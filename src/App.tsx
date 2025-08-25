@@ -19,6 +19,7 @@ import AIAssistant from './components/ai-assistant/AIAssistant';
 import EnvSwitcher from './components/config/EnvSwitcher';
 import Onboarding from './components/common/Onboarding';
 import GuideTour, { GuideStep } from './components/common/GuideTour';
+import UserGuideLoader from './components/common/UserGuideLoader';
 
 import { apiConfigService } from './lib/apiConfigService';
 import { onboardingService } from './lib/onboardingService';
@@ -44,6 +45,7 @@ export interface MarketingStrategy {
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataCacheProvider } from './contexts/DataCacheContext';
 import { OnboardingProvider, useOnboarding } from './contexts/OnboardingContext';
+import { UserGuideProvider, useUserGuide } from './contexts/UserGuideContext';
 
 // Create layout context for AI chat state
 const LayoutContext = createContext<{
@@ -55,7 +57,8 @@ export const useLayout = () => useContext(LayoutContext);
 
 const AppContent: React.FC = () => {
   const { user, loading, session } = useAuth();
-  const { onboardingStatus, loading: onboardingLoading, completeOnboarding } = useOnboarding();
+  const { onboardingStatus, loading: onboardingLoading, completeOnboarding, refreshOnboardingStatus } = useOnboarding();
+  const { userGuideStatus, loading: userGuideLoading, startUserGuideStep, completeUserGuideStep, refreshUserGuideStatus } = useUserGuide();
   const [searchParams, setSearchParams] = useSearchParams();
   // 初始化时从localStorage读取，避免useEffect执行两次
   const [activeMenuItem, setActiveMenuItem] = useState<string>(() => {
@@ -80,45 +83,76 @@ const AppContent: React.FC = () => {
   const [isGuideActive, setIsGuideActive] = useState(false);
   const [currentGuideStep, setCurrentGuideStep] = useState(0);
   const [isFromOnboarding, setIsFromOnboarding] = useState(false);
+  const [isCheckingUserGuide, setIsCheckingUserGuide] = useState(false);
   
   // 定义引导步骤
   const guideSteps: GuideStep[] = [
     {
+      id: 'left-menu',
+      title: '步骤1：进入自动互动功能',
+      content: '欢迎使用X-Pilot！首先点击左侧菜单的"Auto Engagement"按钮，进入自动互动功能模块。',
+      targetSelector: '[data-guide="left-menu"]',
+      position: 'right'
+    },
+    {
       id: 'auto-reply-tab',
-      title: '自动回复功能',
-      content: '这里是自动回复模块，您可以查看和管理所有需要回复的推文。系统会智能识别需要回复的内容，帮助您提高互动效率。',
+      title: '步骤2：选择自动回复标签',
+      content: '点击"autoReply"标签页，查看所有需要回复的推文。系统会智能识别需要回复的内容。',
       targetSelector: '[data-guide="auto-reply-tab"]',
       position: 'bottom'
     },
     {
-      id: 'auto-repost-tab',
-      title: '自动转发功能',
-      content: '自动转发模块让您可以轻松管理转发内容。选择合适的推文进行转发，扩大您的影响力和内容传播范围。',
-      targetSelector: '[data-guide="auto-repost-tab"]',
-      position: 'bottom'
+      id: 'auto-reply-list',
+      title: '步骤3：浏览回复列表',
+      content: '这里显示所有待回复的推文列表。您可以浏览并选择需要回复的内容。',
+      targetSelector: '[data-guide="auto-reply-list"]',
+      position: 'top'
     },
     {
-      id: 'starred-tab',
-      title: '星标内容',
-      content: '这里显示您标记为重要的内容。通过星标功能，您可以快速找到需要特别关注的推文和账户。',
-      targetSelector: '[data-guide="starred-tab"]',
-      position: 'bottom'
-    },
-    {
-      id: 'ai-chat',
-      title: 'AI 智能助手',
-      content: '我是您的AI助手，可以帮助您制定营销策略、分析数据、生成内容等。随时点击这里与我对话，获得专业的建议和支持。',
-      targetSelector: '[data-guide="ai-chat"]',
+      id: 'results-area',
+      title: '步骤4：查看详细信息',
+      content: '选择一条推文后，右侧区域会显示详细信息，包括推文内容、作者信息等。',
+      targetSelector: '[data-guide="results-area"]',
       position: 'left'
+    },
+    {
+      id: 'tools-button',
+      title: '步骤5：使用AI工具',
+      content: '点击"@Tools"按钮，然后在输入框中输入"@reply help me reply"来获取AI回复建议。',
+      targetSelector: '[data-guide="tools-button"]',
+      position: 'top'
+    },
+    {
+      id: 'send-button',
+      title: '步骤6：发送回复',
+      content: '编辑完回复内容后，点击"Send"按钮发送您的回复。恭喜您完成了自动回复功能的学习！',
+      targetSelector: '[data-guide="send-button"]',
+      position: 'top'
     }
   ];
   
   // 引导处理函数
-  const handleGuideComplete = useCallback(() => {
-    setIsGuideActive(false);
-    setIsFromOnboarding(false);
-    setCurrentGuideStep(0);
-  }, []);
+  const handleGuideComplete = useCallback(async () => {
+    try {
+      // 完成当前用户指导步骤
+      if (currentGuideStep < guideSteps.length) {
+        const currentStep = guideSteps[currentGuideStep];
+        await completeUserGuideStep(currentStep.id as any);
+      }
+      
+      // 如果是从onboarding进入的指导，也需要更新onboarding状态
+      if (isFromOnboarding && onboardingStatus && !onboardingStatus.is_finished) {
+        await onboardingService.moveToNextStep();
+        await refreshOnboardingStatus();
+      }
+    } catch (error) {
+      console.error('Failed to complete guide:', error);
+    } finally {
+      setIsGuideActive(false);
+      setIsFromOnboarding(false);
+      setCurrentGuideStep(0);
+    }
+  }, [currentGuideStep, guideSteps, completeUserGuideStep, isFromOnboarding, onboardingStatus, refreshOnboardingStatus]);
   
   const handleGuideSkip = useCallback(() => {
     setIsGuideActive(false);
@@ -198,6 +232,42 @@ const AppContent: React.FC = () => {
     }
   }, [activeMenuItem, profileInitialSection]);
 
+  // 检查用户进入Auto Engagement页面时是否需要显示用户指导
+  useEffect(() => {
+    if (activeMenuItem === 'Auto Engagement') {
+      // 如果还没有用户指导状态且不在加载中，开始检查
+      if (!userGuideStatus && !userGuideLoading && !isCheckingUserGuide) {
+        setIsCheckingUserGuide(true);
+        // 触发用户指导状态刷新
+        refreshUserGuideStatus().finally(() => {
+          setIsCheckingUserGuide(false);
+        });
+      }
+      // 如果已经有用户指导状态且不在加载中
+      else if (userGuideStatus && !userGuideLoading && !isCheckingUserGuide) {
+        // 只有在用户指导未完成且不是错误状态时才启动指导
+        // 如果userGuideStatus.error存在，说明API调用失败，不应该启动指导
+        if (!userGuideStatus.is_finished && !userGuideStatus.error) {
+          setIsGuideActive(true);
+          setCurrentGuideStep(0);
+          // 启动第一个步骤
+          startUserGuideStep('auto-reply-tab');
+        }
+      }
+      
+      // 如果是从onboarding进入的，标记状态
+      if (onboardingStatus && !onboardingLoading) {
+        if (!onboardingStatus.is_finished && onboardingStatus.current_step === 'ENGAGEMENT') {
+          setIsFromOnboarding(true);
+        }
+        else if (onboardingStatus.is_finished && isFromOnboarding && !isGuideActive && userGuideStatus && !userGuideStatus.is_finished && !userGuideStatus.error) {
+          setIsGuideActive(true);
+          setCurrentGuideStep(0);
+        }
+      }
+    }
+  }, [activeMenuItem, userGuideStatus, userGuideLoading, isCheckingUserGuide, startUserGuideStep, refreshUserGuideStatus, onboardingStatus, onboardingLoading, isFromOnboarding, isGuideActive]);
+
   // 监听 API 配置变更
   useEffect(() => {
     const handleApiUrlChange = (newUrl: string) => {
@@ -261,7 +331,7 @@ const AppContent: React.FC = () => {
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-blue-50">
         <div className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 rounded-full border-4 border-blue-200 animate-spin border-t-[#4792E6]"></div>
-          <p className="text-gray-600">Checking...</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
@@ -464,8 +534,13 @@ const AppContent: React.FC = () => {
         {/* 环境切换器 - 仅在开发环境显示 */}
         <EnvSwitcher />
         
-        {/* 引导组件 - 只在从onboarding进入且在Auto Engagement页面时显示 */}
-        {isGuideActive && isFromOnboarding && activeMenuItem === 'Auto Engagement' && (
+        {/* 用户指导加载状态 - 在Auto Engagement页面检查状态时显示 */}
+        <UserGuideLoader 
+          isVisible={activeMenuItem === 'Auto Engagement' && (isCheckingUserGuide || userGuideLoading)} 
+        />
+        
+        {/* 引导组件 - 在Auto Engagement页面时显示 */}
+        {isGuideActive && activeMenuItem === 'Auto Engagement' && (
           <GuideTour
             steps={guideSteps}
             isActive={isGuideActive}
@@ -486,14 +561,16 @@ function App() {
     <DataCacheProvider>
       <AuthProvider>
         <OnboardingProvider>
-          <Router>
-            <Routes>
-              <Route path="/auth/supabase/twitter/callback" element={<TwitterAuthCallback />} />
-              <Route path="/auth/twitter/direct/callback" element={<TwitterDirectCallback />} />
-              {/* Removed PlanDemo route - demo page deleted */}
-              <Route path="/*" element={<AppContent />} />
-            </Routes>
-          </Router>
+          <UserGuideProvider>
+            <Router>
+              <Routes>
+                <Route path="/auth/supabase/twitter/callback" element={<TwitterAuthCallback />} />
+                <Route path="/auth/twitter/direct/callback" element={<TwitterDirectCallback />} />
+                {/* Removed PlanDemo route - demo page deleted */}
+                <Route path="/*" element={<AppContent />} />
+              </Routes>
+            </Router>
+          </UserGuideProvider>
         </OnboardingProvider>
       </AuthProvider>
     </DataCacheProvider>

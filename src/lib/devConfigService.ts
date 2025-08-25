@@ -97,6 +97,45 @@ class DevConfigService {
   }
 
   /**
+   * 获取是否启用用户指南
+   */
+  public getEnableUserGuide(): boolean {
+    // 生产环境始终启用用户指南
+    if (import.meta.env.PROD) {
+      return true;
+    }
+    
+    // 从localStorage读取用户设置，默认为true（开发环境默认启用）
+    const saved = localStorage.getItem('dev_enable_user_guide');
+    return saved ? saved === 'true' : true;
+  }
+
+  /**
+   * 设置是否启用用户指南
+   */
+  public setEnableUserGuide(enable: boolean): void {
+    // 生产环境不允许设置
+    if (import.meta.env.PROD) {
+      return;
+    }
+
+    localStorage.setItem('dev_enable_user_guide', enable.toString());
+    
+    // 通知所有监听器
+    this.notifyListeners();
+  }
+
+  /**
+   * 切换用户指南启用状态
+   */
+  public toggleEnableUserGuide(): boolean {
+    const current = this.getEnableUserGuide();
+    const newValue = !current;
+    this.setEnableUserGuide(newValue);
+    return newValue;
+  }
+
+  /**
    * 获取CopilotKit Runtime URL
    */
   public getCopilotKitRuntimeUrl(): string {
@@ -126,7 +165,8 @@ class DevConfigService {
     return {
       showCopilotDevConsole: this.getShowCopilotDevConsole(),
       copilotKitRuntimeUrl: this.getCopilotKitRuntimeUrl(),
-      showAllMessages: this.getShowAllMessages()
+      showAllMessages: this.getShowAllMessages(),
+      enableUserGuide: this.getEnableUserGuide()
     };
   }
 
@@ -165,8 +205,10 @@ class DevConfigService {
 
     localStorage.removeItem('dev_show_copilot_console');
     localStorage.removeItem('dev_show_all_messages');
+    localStorage.removeItem('dev_enable_user_guide');
     this.notifyListeners();
   }
+
 }
 
 // 开发配置接口
@@ -174,6 +216,7 @@ export interface DevConfig {
   showCopilotDevConsole: boolean;
   copilotKitRuntimeUrl: string;
   showAllMessages: boolean;
+  enableUserGuide: boolean;
 }
 
 // 导出单例实例

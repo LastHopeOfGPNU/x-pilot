@@ -31,7 +31,7 @@ const UserProfile: React.FC = () => {
           className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <LogOut className="w-4 h-4 mr-2" />
-          {loading ? '登出中...' : '登出'}
+          {loading ? 'Signing out...' : '登出'}
         </button>
       </div>
 
